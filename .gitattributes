@@ -1,0 +1,8 @@
+# 迁移与校验文件必须按字节冻结：Windows 检出不得以 CRLF 改写，
+# 否则 sqlx 启动校验 sha384 不匹配拒绝启动。
+*.sql text eol=lf
+**/.frozen-sha256 text eol=lf
+
+# 部署/脚本文件在 Linux 容器内执行，同样锁定 LF。
+*.sh text eol=lf
+*.mjs text eol=lf

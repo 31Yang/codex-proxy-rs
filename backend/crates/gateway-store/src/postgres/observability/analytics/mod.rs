@@ -17,8 +17,10 @@ const SCHEMA_VERSION: i32 = 1;
 const HISTOGRAM_VERSION: i32 = histogram::HISTOGRAM_VERSION;
 const MAX_FACT_ROWS: usize = 100_000;
 
-pub(super) async fn begin_snapshot(pool: &PgPool) -> StoreResult<sqlx::Transaction<'_, Postgres>> {
-    let mut transaction = pool
+pub(super) async fn begin_snapshot(
+    connection: &mut PgConnection,
+) -> StoreResult<sqlx::Transaction<'_, Postgres>> {
+    let mut transaction = connection
         .begin()
         .await
         .map_err(|error| postgres_unavailable("begin analytics snapshot", error))?;

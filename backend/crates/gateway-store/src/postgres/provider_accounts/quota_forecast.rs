@@ -24,16 +24,20 @@ pub(super) async fn load_history(
         ));
     }
     let rows = budget
-        .run("load quota forecast history", async {
-            sqlx::query(sqlx::AssertSqlSafe(history_sql()))
-                .bind(&window.account_id)
-                .bind(range.start)
-                .bind(range.end)
-                .bind(MAX_FORECAST_HISTORY_POINTS as i32)
-                .fetch_all(pool)
-                .await
-                .map_err(|source| postgres_unavailable("load quota forecast history", source))
-        })
+        .run(
+            pool,
+            "load quota forecast history",
+            |mut connection| async move {
+                sqlx::query(sqlx::AssertSqlSafe(history_sql()))
+                    .bind(&window.account_id)
+                    .bind(range.start)
+                    .bind(range.end)
+                    .bind(MAX_FORECAST_HISTORY_POINTS as i32)
+                    .fetch_all(&mut *connection)
+                    .await
+                    .map_err(|source| postgres_unavailable("load quota forecast history", source))
+            },
+        )
         .await
         .map_err(|error| admin_store_error(ENTITY, error))?;
     let mut history = QuotaForecastHistory::default();

@@ -53,15 +53,18 @@ impl PgRequestAnalyticsRepository {
 
     pub async fn status(&self) -> StoreResult<AnalyticsStatus> {
         self.query_budget
-            .run("analytics status", async {
-                let mut transaction = begin_snapshot(&self.pool).await?;
-                let status = status(&mut transaction).await?;
-                transaction
-                    .commit()
-                    .await
-                    .map_err(|error| postgres_unavailable("complete analytics status", error))?;
-                Ok(status)
-            })
+            .run(
+                &self.pool,
+                "analytics status",
+                |mut connection| async move {
+                    let mut transaction = begin_snapshot(&mut connection).await?;
+                    let status = status(&mut transaction).await?;
+                    transaction.commit().await.map_err(|error| {
+                        postgres_unavailable("complete analytics status", error)
+                    })?;
+                    Ok(status)
+                },
+            )
             .await
     }
 
@@ -69,9 +72,9 @@ impl PgRequestAnalyticsRepository {
         if batch_size == 0 || batch_size > 10_000 {
             return Err(invalid("analytics batch size must be between 1 and 10000"));
         }
-        self.query_budget.run("maintain request analytics", async {
+        self.query_budget.run(&self.pool, "maintain request analytics", |mut connection| async move {
             // 数据库事务锁同时约束单副本内重复任务与过期 Worker，源写入不获取此锁
-            let mut transaction = begin_snapshot(&self.pool).await?;
+            let mut transaction = begin_snapshot(&mut connection).await?;
             let acquired: bool = sqlx::query_scalar("select pg_try_advisory_xact_lock(hashtextextended(current_schema()::text,382032))")
                 .fetch_one(&mut *transaction).await.map_err(|error| postgres_unavailable("claim analytics maintenance", error))?;
             if !acquired { return Ok(AnalyticsMaintenance::default()); }
@@ -100,7 +103,7 @@ impl PgRequestAnalyticsRepository {
                 .bind(ids).bind(versions).execute(&mut *transaction).await.map_err(|error| postgres_unavailable("confirm analytics request versions", error))?;
             transaction.commit().await.map_err(|error| postgres_unavailable("publish analytics maintenance", error))?;
             // 每个阶段使用独立短事务，聚合只锁自己的队列，不把读放大传递到请求终结
-            let mut transaction = begin_snapshot(&self.pool).await?;
+            let mut transaction = begin_snapshot(&mut connection).await?;
             let acquired: bool = sqlx::query_scalar("select pg_try_advisory_xact_lock(hashtextextended(current_schema()::text,382032))")
                 .fetch_one(&mut *transaction).await.map_err(|error| postgres_unavailable("claim analytics bucket maintenance", error))?;
             if !acquired { return Ok(result); }

@@ -49,8 +49,9 @@ impl PgObservabilityRepository {
         let accounts = self
             .query_budget
             .run(
+                &self.pool,
                 "load dashboard provider accounts",
-                load_account_statuses(&self.pool),
+                |mut connection| async move { load_account_statuses(&mut *connection).await },
             )
             .await?;
         let now = observed_at.into();
@@ -180,32 +181,39 @@ impl PgObservabilityRepository {
         };
         let (totals, trend, analytics, account_usage) = self
             .query_budget
-            .run("load dashboard analytics", async {
-                let mut snapshot = analytics::AnalyticsSnapshot::new(&self.pool).await?;
-                let totals = snapshot.totals().await?;
-                let trend = snapshot
-                    .trend(
-                        range,
-                        &UsageRecordFilter::default(),
-                        query.granularity,
-                        self.timezone,
-                        false,
-                    )
-                    .await?;
-                let account_usage =
-                    provider_account_usage(&mut snapshot.tx, account_usage_query).await?;
-                let metadata = snapshot.metadata();
-                snapshot.finish().await?;
-                Ok((totals, trend, metadata, account_usage))
-            })
+            .run(
+                &self.pool,
+                "load dashboard analytics",
+                |mut connection| async move {
+                    let mut snapshot = analytics::AnalyticsSnapshot::new(&mut connection).await?;
+                    let totals = snapshot.totals().await?;
+                    let trend = snapshot
+                        .trend(
+                            range,
+                            &UsageRecordFilter::default(),
+                            query.granularity,
+                            self.timezone,
+                            false,
+                        )
+                        .await?;
+                    let account_usage =
+                        provider_account_usage(&mut snapshot.tx, account_usage_query).await?;
+                    let metadata = snapshot.metadata();
+                    snapshot.finish().await?;
+                    Ok((totals, trend, metadata, account_usage))
+                },
+            )
             .await?;
         let (provider_accounts, normal_accounts) =
             self.account_status_snapshot(observed_at).await?;
         let recent_requests = self
             .query_budget
             .run(
+                &self.pool,
                 "load dashboard recent requests",
-                list_usage_record_items(&self.pool, &recent_query),
+                |mut connection| async move {
+                    list_usage_record_items(&mut *connection, &recent_query, None).await
+                },
             )
             .await?;
         let runtime_slots = self.dashboard_runtime_slots(&normal_accounts).await?;
@@ -227,20 +235,24 @@ impl PgObservabilityRepository {
         granularity: admin_observability::Granularity,
     ) -> StoreResult<Vec<RequestMetricPoint>> {
         self.query_budget
-            .run("load dashboard analytics trend", async {
-                let mut snapshot = analytics::AnalyticsSnapshot::new(&self.pool).await?;
-                let points = snapshot
-                    .trend(
-                        range,
-                        &UsageRecordFilter::default(),
-                        granularity,
-                        self.timezone,
-                        false,
-                    )
-                    .await?;
-                snapshot.finish().await?;
-                Ok(points)
-            })
+            .run(
+                &self.pool,
+                "load dashboard analytics trend",
+                |mut connection| async move {
+                    let mut snapshot = analytics::AnalyticsSnapshot::new(&mut connection).await?;
+                    let points = snapshot
+                        .trend(
+                            range,
+                            &UsageRecordFilter::default(),
+                            granularity,
+                            self.timezone,
+                            false,
+                        )
+                        .await?;
+                    snapshot.finish().await?;
+                    Ok(points)
+                },
+            )
             .await
     }
 
@@ -251,14 +263,18 @@ impl PgObservabilityRepository {
         granularity: admin_observability::Granularity,
     ) -> StoreResult<Vec<RequestMetricPoint>> {
         self.query_budget
-            .run("load analytics trend", async {
-                let mut snapshot = analytics::AnalyticsSnapshot::new(&self.pool).await?;
-                let points = snapshot
-                    .trend(range, &filter, granularity, self.timezone, true)
-                    .await?;
-                snapshot.finish().await?;
-                Ok(points)
-            })
+            .run(
+                &self.pool,
+                "load analytics trend",
+                |mut connection| async move {
+                    let mut snapshot = analytics::AnalyticsSnapshot::new(&mut connection).await?;
+                    let points = snapshot
+                        .trend(range, &filter, granularity, self.timezone, true)
+                        .await?;
+                    snapshot.finish().await?;
+                    Ok(points)
+                },
+            )
             .await
     }
 
@@ -269,23 +285,27 @@ impl PgObservabilityRepository {
         granularity: admin_observability::Granularity,
     ) -> StoreResult<admin_observability::UsageInsightsObservation> {
         self.query_budget
-            .run("load usage insights snapshot", async {
-                let mut snapshot = analytics::AnalyticsSnapshot::new(&self.pool).await?;
-                let mut overview = snapshot.overview(range, &filter).await?;
-                let trend = snapshot
-                    .trend(range, &filter, granularity, self.timezone, true)
-                    .await?;
-                let costs = snapshot
-                    .projected_costs(range, &filter, granularity, self.timezone)
-                    .await?;
-                overview.analytics = snapshot.metadata();
-                snapshot.finish().await?;
-                Ok(admin_observability::UsageInsightsObservation {
-                    overview: admin_usage_overview(overview),
-                    trend: trend.into_iter().map(admin_request_metric_point).collect(),
-                    costs,
-                })
-            })
+            .run(
+                &self.pool,
+                "load usage insights snapshot",
+                |mut connection| async move {
+                    let mut snapshot = analytics::AnalyticsSnapshot::new(&mut connection).await?;
+                    let mut overview = snapshot.overview(range, &filter).await?;
+                    let trend = snapshot
+                        .trend(range, &filter, granularity, self.timezone, true)
+                        .await?;
+                    let costs = snapshot
+                        .projected_costs(range, &filter, granularity, self.timezone)
+                        .await?;
+                    overview.analytics = snapshot.metadata();
+                    snapshot.finish().await?;
+                    Ok(admin_observability::UsageInsightsObservation {
+                        overview: admin_usage_overview(overview),
+                        trend: trend.into_iter().map(admin_request_metric_point).collect(),
+                        costs,
+                    })
+                },
+            )
             .await
     }
 
@@ -294,16 +314,20 @@ impl PgObservabilityRepository {
         query: ProviderAccountUsageQuery,
     ) -> StoreResult<Vec<ProviderAccountUsageObservation>> {
         self.query_budget
-            .run("load provider account usage", async {
-                let mut snapshot = analytics::AnalyticsSnapshot::new(&self.pool).await?;
-                snapshot.require_visible(Some(query.range)).await?;
-                if let Some(range) = query.request_bucket_range {
-                    snapshot.require_visible(Some(range)).await?;
-                }
-                let usage = provider_account_usage(&mut snapshot.tx, query).await?;
-                snapshot.finish().await?;
-                Ok(usage)
-            })
+            .run(
+                &self.pool,
+                "load provider account usage",
+                |mut connection| async move {
+                    let mut snapshot = analytics::AnalyticsSnapshot::new(&mut connection).await?;
+                    snapshot.require_visible(Some(query.range)).await?;
+                    if let Some(range) = query.request_bucket_range {
+                        snapshot.require_visible(Some(range)).await?;
+                    }
+                    let usage = provider_account_usage(&mut snapshot.tx, query).await?;
+                    snapshot.finish().await?;
+                    Ok(usage)
+                },
+            )
             .await
     }
 
@@ -312,15 +336,20 @@ impl PgObservabilityRepository {
         query: UsageRecordQuery,
     ) -> StoreResult<UsageRecordPage> {
         self.query_budget
-            .run("list usage records", list_usage_records(&self.pool, query))
+            .run(
+                &self.pool,
+                "list usage records",
+                |mut connection| async move { list_usage_records(&mut connection, query).await },
+            )
             .await
     }
 
     pub async fn usage_record_detail(&self, request_id: &str) -> StoreResult<UsageRecordDetail> {
         self.query_budget
             .run(
+                &self.pool,
                 "load usage record detail",
-                usage_record_detail(&self.pool, request_id),
+                |mut connection| async move { usage_record_detail(&mut connection, request_id).await },
             )
             .await
     }
@@ -331,12 +360,16 @@ impl PgObservabilityRepository {
         filter: UsageRecordFilter,
     ) -> StoreResult<UsageOverview> {
         self.query_budget
-            .run("load usage analytics", async {
-                let mut snapshot = analytics::AnalyticsSnapshot::new(&self.pool).await?;
-                let overview = snapshot.overview(range, &filter).await?;
-                snapshot.finish().await?;
-                Ok(overview)
-            })
+            .run(
+                &self.pool,
+                "load usage analytics",
+                |mut connection| async move {
+                    let mut snapshot = analytics::AnalyticsSnapshot::new(&mut connection).await?;
+                    let overview = snapshot.overview(range, &filter).await?;
+                    snapshot.finish().await?;
+                    Ok(overview)
+                },
+            )
             .await
     }
 
@@ -348,20 +381,26 @@ impl PgObservabilityRepository {
         limit: u16,
     ) -> StoreResult<DiagnosticsObservation> {
         self.query_budget
-            .run("load analytics diagnostics", async {
-                let mut snapshot = analytics::AnalyticsSnapshot::new(&self.pool).await?;
-                let observation = snapshot
-                    .diagnostics(range, &filter, dimension, limit)
-                    .await?;
-                snapshot.finish().await?;
-                Ok(observation)
-            })
+            .run(
+                &self.pool,
+                "load analytics diagnostics",
+                |mut connection| async move {
+                    let mut snapshot = analytics::AnalyticsSnapshot::new(&mut connection).await?;
+                    let observation = snapshot
+                        .diagnostics(range, &filter, dimension, limit)
+                        .await?;
+                    snapshot.finish().await?;
+                    Ok(observation)
+                },
+            )
             .await
     }
 
     pub async fn list_ops_errors(&self, query: OpsErrorQuery) -> StoreResult<OpsErrorPage> {
         self.query_budget
-            .run("list ops errors", list_ops_errors(&self.pool, query))
+            .run(&self.pool, "list ops errors", |mut connection| async move {
+                list_ops_errors(&mut connection, query).await
+            })
             .await
     }
 }
@@ -371,15 +410,21 @@ impl AdminObservabilityStore for PgAdminObservabilityStore {
     async fn analytics_cache_generation(&self) -> AdminStoreResult<u64> {
         self.repository
             .query_budget
-            .run("read analytics cache generation", async {
-                let generation: i64 = sqlx::query_scalar(
-                    "select generation from request_analytics_build_state where singleton",
-                )
-                .fetch_one(&self.repository.pool)
-                .await
-                .map_err(|error| postgres_unavailable("read analytics cache generation", error))?;
-                u64::try_from(generation).map_err(|_| invalid("invalid analytics generation"))
-            })
+            .run(
+                &self.repository.pool,
+                "read analytics cache generation",
+                |mut connection| async move {
+                    let generation: i64 = sqlx::query_scalar(
+                        "select generation from request_analytics_build_state where singleton",
+                    )
+                    .fetch_one(&mut *connection)
+                    .await
+                    .map_err(|error| {
+                        postgres_unavailable("read analytics cache generation", error)
+                    })?;
+                    u64::try_from(generation).map_err(|_| invalid("invalid analytics generation"))
+                },
+            )
             .await
             .map_err(observability_error)
     }

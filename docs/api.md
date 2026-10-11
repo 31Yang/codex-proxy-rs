@@ -1824,15 +1824,16 @@ request/response/upstream ID、outcome 与搜索文本。诊断 `dimension` 可�
 `requestShare` 的分母为该维度筛选后、截取前的全部请求数；`failureClass` 只在带错误类型的请求内计算占比
 `retryCount` 为额外执行尝试次数之和，`retryRate` 为发生过重试的请求数占该组请求数的比例，同一请求多次重试只计一次
 
-账号维度诊断项、使用记录列表和错误排查列表的 `accountPlanType` / `accountPlanTypeDisplay` 返回账号当前订阅及展示名称，
-按各记录的内部账号 ID 关联；订阅未知或账号已删除时为 `null`，不作为请求发生时的订阅快照
+使用记录列表和错误排查列表的 `accountPlanType` / `accountPlanTypeDisplay` 来自记录保存的账号订阅快照。
+账号维度诊断使用该账号最近请求的订阅快照；未保存订阅时为 `null`
 
-管理端请求列表及 Dashboard 最近请求中的 `accountNotes` 为账号当前备注，按内部账号 ID 关联。
-备注不写入请求历史快照；无备注或账号已删除时返回 `null`，修改备注不改变历史请求的账号归属
+管理端请求列表及 Dashboard 最近请求中的 `accountNotes` 来自请求保存的账号备注快照，未保存时为 `null`
 
-`/api/admin/usage/records` 与 `/api/admin/operations/errors` 的记录返回 `clientApiKeyName`，为关联 Key 的当前名称
+`/api/admin/usage/records` 与 `/api/admin/operations/errors` 的 `clientApiKeyName` 来自请求保存的 Key 名称快照，
+未保存时为 `null`，不影响记录返回，不包含密钥原文
 
-Key 已删除或未关联时为 `null`，不影响记录返回，不包含密钥原文
+查询不关联当前配置，改名、修改订阅或删除配置不改变已有快照。补写的历史 Key 名称与订阅取自补写时仍存在的配置，
+不保证等于请求发生时的值；无法补齐的字段保持未知
 
 运维错误记录的 `errorDetails` 为受控诊断文本，无详情时为 `null`。
 错误来源快照以 JSON 文本保存：`causes.messages` 按外层到内层排列本地原因，`causes.truncated`

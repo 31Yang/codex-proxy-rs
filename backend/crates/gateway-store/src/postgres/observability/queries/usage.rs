@@ -174,13 +174,25 @@ pub(crate) const USAGE_RECORD_DETAIL_SELECT: &str =
      from model_request_observations mr";
 
 pub(crate) async fn list_usage_records(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     query: UsageRecordQuery,
 ) -> StoreResult<UsageRecordPage> {
     query.filter.validate()?;
-    let mut transaction = analytics::begin_snapshot(pool).await?;
-    let total = count_usage_records(&mut *transaction, query.range, &query.filter).await?;
-    let items = list_usage_record_items(&mut *transaction, &query).await?;
+    let mut transaction = analytics::begin_snapshot(connection).await?;
+    // 第一页未填满时，当前快照中的行数已是精确总数，无需再次扫描计数
+    let (total, items) = if query.current_page == 1 {
+        let items = list_usage_record_items(&mut *transaction, &query, None).await?;
+        let total = if items.len() < usize::from(query.page_size.get()) {
+            items.len() as u64
+        } else {
+            count_usage_records(&mut *transaction, query.range, &query.filter).await?
+        };
+        (total, items)
+    } else {
+        let total = count_usage_records(&mut *transaction, query.range, &query.filter).await?;
+        let items = list_usage_record_items(&mut *transaction, &query, Some(total)).await?;
+        (total, items)
+    };
     transaction
         .commit()
         .await
@@ -196,9 +208,25 @@ pub(crate) async fn list_usage_records(
 pub(crate) async fn list_usage_record_items<'e, E: sqlx::Executor<'e, Database = Postgres>>(
     executor: E,
     query: &UsageRecordQuery,
+    total: Option<u64>,
 ) -> StoreResult<Vec<UsageListRecord>> {
     query.filter.validate()?;
-    let offset = observability_page_offset(query.current_page, query.page_size)?;
+    let mut offset = observability_page_offset(query.current_page, query.page_size)?;
+    let mut limit = i64::from(query.page_size.get());
+    let mut ascending = false;
+    if let Some(total) = total {
+        let total = i64::try_from(total).map_err(|_| invalid("usage count overflows i64"))?;
+        if offset >= total {
+            return Ok(Vec::new());
+        }
+        limit = limit.min(total - offset);
+        let reverse_offset = total - offset - limit;
+        // 精确总数与候选页共用快照，尾页可从时间索引另一端读取而不改变页码语义
+        if reverse_offset < offset {
+            offset = reverse_offset;
+            ascending = true;
+        }
+    }
     let mut statement = QueryBuilder::<Postgres>::new(
         "with candidate_page as materialized (select mr.id, mr.started_at from model_request_observations mr",
     );
@@ -208,8 +236,12 @@ pub(crate) async fn list_usage_record_items<'e, E: sqlx::Executor<'e, Database =
     statement.push_bind(query.range.end);
     push_completed_usage_fact_filter(&mut statement, "mr");
     push_usage_filter(&mut statement, &query.filter, "mr");
-    statement.push(" order by mr.started_at desc, mr.id desc limit ");
-    statement.push_bind(i64::from(query.page_size.get()));
+    statement.push(if ascending {
+        " order by mr.started_at, mr.id limit "
+    } else {
+        " order by mr.started_at desc, mr.id desc limit "
+    });
+    statement.push_bind(limit);
     statement.push(" offset ");
     statement.push_bind(offset);
     statement.push(") ");
@@ -251,7 +283,7 @@ pub(crate) async fn count_usage_records<'e, E: sqlx::Executor<'e, Database = Pos
 }
 
 pub(crate) async fn usage_record_detail(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     request_id: &str,
 ) -> StoreResult<UsageRecordDetail> {
     require_nonempty("model request", "id", request_id)?;
@@ -261,7 +293,7 @@ pub(crate) async fn usage_record_detail(
     statement.push_bind(request_id.to_owned());
     let row = statement
         .build()
-        .fetch_optional(pool)
+        .fetch_optional(&mut *connection)
         .await
         .map_err(|source| postgres_unavailable("load usage record detail", source))?
         .ok_or_else(|| StoreError::NotFound {
@@ -284,7 +316,7 @@ pub(crate) async fn usage_record_detail(
          order by attempt_index, created_at, id",
     )
     .bind(request_id)
-    .fetch_all(pool)
+    .fetch_all(&mut *connection)
     .await
     .map_err(|source| postgres_unavailable("load usage attempt observations", source))?;
     let mut attempts = rows
@@ -304,7 +336,7 @@ pub(crate) async fn usage_record_detail(
          from model_request_observations current join model_request_observations related
            on related.id = current.recovery_request_id or related.recovery_request_id = current.id
          where current.id = $1 order by related.started_at limit 20"
-    ).bind(request_id).fetch_all(pool).await
+    ).bind(request_id).fetch_all(&mut *connection).await
         .map_err(|source| postgres_unavailable("load related recovery requests", source))?;
     Ok(UsageRecordDetail {
         request,

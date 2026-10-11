@@ -69,11 +69,11 @@ left join model_request_observations mr on mr.id = oe.model_request_id
 where true";
 
 pub(crate) async fn list_ops_errors(
-    pool: &PgPool,
+    connection: &mut PgConnection,
     query: OpsErrorQuery,
 ) -> StoreResult<OpsErrorPage> {
     validate_ops_error_filter(&query.filter)?;
-    let mut transaction = analytics::begin_snapshot(pool).await?;
+    let mut transaction = analytics::begin_snapshot(connection).await?;
     let total = count_ops_errors(&mut transaction, query.range, &query.filter).await?;
     let offset = observability_page_offset(query.current_page, query.page_size)?;
     let mut statement =

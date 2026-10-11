@@ -16,8 +16,8 @@ struct ReadSelection<'a> {
 }
 
 impl<'a> AnalyticsSnapshot<'a> {
-    pub async fn new(pool: &'a PgPool) -> StoreResult<Self> {
-        let mut tx = begin_snapshot(pool).await?;
+    pub async fn new(connection: &'a mut PgConnection) -> StoreResult<Self> {
+        let mut tx = begin_snapshot(connection).await?;
         // 时间跨度和分组选择性差异很大，通用计划会把长区间误估成短区间
         // 仅当前只读事务使用实际参数规划，不改变连接池后续事务的计划策略
         sqlx::query("set local plan_cache_mode = force_custom_plan")

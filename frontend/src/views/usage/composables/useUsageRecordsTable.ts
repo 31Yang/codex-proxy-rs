@@ -23,12 +23,10 @@ type LoadingAnalytics<T> = Omit<T, 'analytics'> & { analytics: AnalyticsMetadata
 
 interface UsageLoadOptions {
   scope?: UsageLoadScope
-  background?: boolean
 }
 
 export function useUsageRecordsTable(options: UseUsageRecordsTableOptions) {
   const analyticsLoading = shallowRef(true)
-  const analyticsError = shallowRef(false)
   const summary = shallowRef(emptySummary())
   const insights = shallowRef(emptyInsights())
   const searchQuery = shallowRef('')
@@ -73,18 +71,18 @@ export function useUsageRecordsTable(options: UseUsageRecordsTableOptions) {
   }
 
   async function loadUsageRecords(loadOptions: UsageLoadOptions = {}) {
-    const { scope = 'all', background = false } = loadOptions
+    const { scope = 'all' } = loadOptions
     const globalParams = scopedParams()
     if (scope === 'all')
       resetTable()
 
     await Promise.all([
       ...(options.active.value ? [table.execute()] : []),
-      ...(scope === 'all' ? [loadUsageAnalytics(globalParams, background)] : []),
+      ...(scope === 'all' ? [loadUsageAnalytics(globalParams)] : []),
     ])
   }
 
-  async function loadUsageAnalytics(globalParams: ReturnType<typeof scopedParams>, background: boolean) {
+  async function loadUsageAnalytics(globalParams: ReturnType<typeof scopedParams>) {
     const requestId = ++analyticsRequestId
     const diagnosticsId = ++diagnosticRequestId
     analyticsController?.abort()
@@ -92,8 +90,9 @@ export function useUsageRecordsTable(options: UseUsageRecordsTableOptions) {
     analyticsController = new AbortController()
     const requestOptions = { signal: analyticsController.signal }
     const dimension = diagnosticDimension.value
-    analyticsLoading.value = !background
-    analyticsError.value = false
+    analyticsLoading.value = true
+    summary.value = emptySummary()
+    insights.value = emptyInsights()
     try {
       const [nextSummary, overview, diagnostics] = await Promise.all([
         getUsageRecordSummary(globalParams, requestOptions),
@@ -116,8 +115,10 @@ export function useUsageRecordsTable(options: UseUsageRecordsTableOptions) {
       }
     }
     catch {
-      if (requestId === analyticsRequestId)
-        analyticsError.value = true
+      if (requestId === analyticsRequestId) {
+        summary.value = emptySummary()
+        insights.value = emptyInsights()
+      }
     }
     finally {
       if (requestId === analyticsRequestId) {
@@ -190,7 +191,7 @@ export function useUsageRecordsTable(options: UseUsageRecordsTableOptions) {
   })
 
   watch(providerQuery, () => {
-    void loadUsageRecords({ background: true })
+    void loadUsageRecords()
   })
 
   watch(options.active, (active) => {
@@ -226,7 +227,6 @@ export function useUsageRecordsTable(options: UseUsageRecordsTableOptions) {
     loading,
     error,
     analyticsLoading,
-    analyticsError,
     records,
     summary,
     insights,

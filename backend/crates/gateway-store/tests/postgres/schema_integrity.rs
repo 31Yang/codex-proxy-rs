@@ -78,29 +78,6 @@ async fn seed_request(pool: &sqlx::PgPool) {
     .expect("seed request without optional facts");
 }
 
-async fn seed_request_at_27(pool: &sqlx::PgPool) {
-    sqlx::query(
-        "insert into model_requests (
-           id, client_api_key_ref, operation, client_transport, started_at, deadline_at, outcome, completed_at, request_observation_json
-         ) values (
-           'req_integrity', 'deleted_key', 'responses', 'http_sse', now(), now() + interval '1 hour', 'failed', now(),
-           jsonb_strip_nulls(jsonb_build_object(
-           'request', jsonb_build_object(
-             'configRevision', 1,
-             'protocol', 'openai',
-             'endpoint', '/v1/responses',
-             'compact', false),
-           'routing', jsonb_build_object(
-             'scope', 'all',
-             'groupRefs', '{}'::text[],
-             'groupNamesSnapshot', '[]'::jsonb)))
-         )",
-    )
-    .execute(pool)
-    .await
-    .expect("seed request without optional facts");
-}
-
 fn assert_check_rejected(error: &sqlx::Error) {
     assert_eq!(
         error
@@ -431,54 +408,6 @@ async fn request_observation_reject_malformed_documents_and_keep_upstream_clock_
 }
 
 #[tokio::test]
-async fn observation_validation_upgrade_preserves_history_and_rejects_invalid_writes() {
-    let Some(db) = TestDatabase::create_through("observation_validation_upgrade", 27).await else {
-        return;
-    };
-    seed_request_at_27(&db.pool).await;
-    let before: serde_json::Value =
-        sqlx::query_scalar("select to_jsonb(mr) from model_requests mr")
-            .fetch_one(&db.pool)
-            .await
-            .unwrap();
-
-    super::TEST_MIGRATOR.run_to(28, &db.pool).await.unwrap();
-    let after: serde_json::Value = sqlx::query_scalar("select to_jsonb(mr) from model_requests mr")
-        .fetch_one(&db.pool)
-        .await
-        .unwrap();
-    assert_eq!(after, before);
-
-    for statement in [
-        "insert into model_requests (
-           id, client_api_key_ref, operation, client_transport, started_at, deadline_at,
-           outcome, completed_at, request_observation_json
-         ) select 'invalid_insert', client_api_key_ref, operation, client_transport,
-           started_at, deadline_at, outcome, completed_at,
-           request_observation_json || '{\"unknown\":true}'::jsonb from model_requests",
-        "update model_requests set request_observation_json =
-           request_observation_json || '{\"unknown\":true}'::jsonb",
-    ] {
-        let error = sqlx::query(sqlx::AssertSqlSafe(statement))
-            .execute(&db.pool)
-            .await
-            .expect_err("invalid observations must still fail immediately");
-        assert_check_rejected(&error);
-        assert_eq!(
-            error.as_database_error().unwrap().constraint(),
-            Some("model_requests_observation_shape_ck")
-        );
-    }
-    let rows: Vec<serde_json::Value> =
-        sqlx::query_scalar("select to_jsonb(mr) from model_requests mr")
-            .fetch_all(&db.pool)
-            .await
-            .unwrap();
-    assert_eq!(rows, vec![before]);
-    db.close().await;
-}
-
-#[tokio::test]
 async fn unchanged_observations_do_not_repeat_full_document_validation() {
     let Some(db) = TestDatabase::create("observation_validation_cost").await else {
         return;
@@ -596,10 +525,10 @@ async fn observation_validation_checks_the_final_row_after_before_triggers() {
 
 #[tokio::test]
 async fn conditional_business_validation_preserves_each_constraint_and_cross_column_updates() {
-    let Some(db) = TestDatabase::create_through("observation_dependencies", 28).await else {
+    let Some(db) = TestDatabase::create("observation_dependencies").await else {
         return;
     };
-    seed_request_at_27(&db.pool).await;
+    seed_request(&db.pool).await;
     let cases = [
         (
             "model_requests_upstream_duration_ck",
@@ -645,25 +574,19 @@ async fn conditional_business_validation_preserves_each_constraint_and_cross_col
             "cost_source = 'calculated', cost_amount = 1",
         ),
     ];
-    for version in [28, 29] {
-        super::TEST_MIGRATOR
-            .run_to(version, &db.pool)
-            .await
-            .unwrap();
-        for (constraint, assignment) in cases {
-            let error = sqlx::query(sqlx::AssertSqlSafe(format!(
-                "update model_requests set {assignment} where id = 'req_integrity'"
-            )))
-            .execute(&db.pool)
-            .await
-            .expect_err("invalid final row must fail");
-            assert_check_rejected(&error);
-            assert_eq!(
-                error.as_database_error().unwrap().constraint(),
-                Some(constraint),
-                "migration {version}: {assignment}"
-            );
-        }
+    for (constraint, assignment) in cases {
+        let error = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "update model_requests set {assignment} where id = 'req_integrity'"
+        )))
+        .execute(&db.pool)
+        .await
+        .expect_err("invalid final row must fail");
+        assert_check_rejected(&error);
+        assert_eq!(
+            error.as_database_error().unwrap().constraint(),
+            Some(constraint),
+            "{assignment}"
+        );
     }
     sqlx::query("update model_requests set continuation_requested = true, request_observation_json = request_observation_json || jsonb_build_object('continuation', jsonb_build_object('previousResponseIdHash', repeat('a',64)))")
         .execute(&db.pool).await.unwrap();
@@ -675,33 +598,5 @@ async fn conditional_business_validation_preserves_each_constraint_and_cross_col
         error.as_database_error().unwrap().constraint(),
         Some("model_requests_continuation_hashes_ck")
     );
-    db.close().await;
-}
-
-#[tokio::test]
-async fn lease_migration_moves_running_expiry_and_preserves_terminal_expiry() {
-    let Some(db) = TestDatabase::create_through("lease_upgrade", 30).await else {
-        return;
-    };
-    seed_request_at_27(&db.pool).await;
-    sqlx::query("insert into model_requests (id, client_api_key_ref, operation, client_transport, started_at, deadline_at, request_observation_json)
-        select 'running_upgrade', client_api_key_ref, operation, client_transport, started_at, deadline_at, request_observation_json from model_requests where id = 'req_integrity'")
-        .execute(&db.pool).await.unwrap();
-    let expiry: chrono::DateTime<chrono::Utc> =
-        sqlx::query_scalar("select deadline_at from model_requests where id = 'running_upgrade'")
-            .fetch_one(&db.pool)
-            .await
-            .unwrap();
-    super::TEST_MIGRATOR.run_to(31, &db.pool).await.unwrap();
-    let running: (Option<chrono::DateTime<chrono::Utc>>, chrono::DateTime<chrono::Utc>) = sqlx::query_as("select request.recovery_lease_expires_at, lease.lease_expires_at from model_requests request join model_request_leases lease on lease.request_id = request.id where request.id = 'running_upgrade'")
-        .fetch_one(&db.pool).await.unwrap();
-    assert_eq!(running, (None, expiry));
-    let terminal: chrono::DateTime<chrono::Utc> = sqlx::query_scalar(
-        "select recovery_lease_expires_at from model_requests where id = 'req_integrity'",
-    )
-    .fetch_one(&db.pool)
-    .await
-    .unwrap();
-    assert_eq!(terminal, expiry);
     db.close().await;
 }

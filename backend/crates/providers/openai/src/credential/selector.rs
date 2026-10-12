@@ -126,10 +126,23 @@ impl<'a> CodexSelectionModel<'a> {
     }
 
     pub(crate) fn allows_account(self, account: &ProviderAccount) -> bool {
+        if account.authentication_kind() != CODEX_AUTHENTICATION_KIND_OAUTH {
+            return true;
+        }
+        // API Key 兼容上游可以提供 Grok；ChatGPT OAuth 不能因共用 Provider 被选中
+        // 使用路由映射后的模型，不限制未知别名或尚未被目录收录的 OpenAI 模型
+        if self.model().is_some_and(|model| {
+            let model = model.rsplit('/').next().unwrap_or(model);
+            model.eq_ignore_ascii_case("grok")
+                || model
+                    .get(..5)
+                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case("grok-"))
+        }) {
+            return false;
+        }
         // 官方 Codex 的 image_generation_available 排除 Free，API Key 不套用 ChatGPT 套餐
         // https://github.com/openai/codex/commit/0a0a9b6c8f
         !(matches!(self, Self::Image(_))
-            && account.authentication_kind() == CODEX_AUTHENTICATION_KIND_OAUTH
             && account
                 .plan_type()
                 .is_some_and(|plan| plan.trim().eq_ignore_ascii_case("free")))

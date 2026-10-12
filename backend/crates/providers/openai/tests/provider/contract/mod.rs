@@ -5,6 +5,7 @@ mod capacity;
 mod error_details;
 mod image_account_eligibility;
 mod image_model_access;
+mod model_account_eligibility;
 mod passthrough;
 mod precommit;
 mod privacy;

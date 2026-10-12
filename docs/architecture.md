@@ -382,6 +382,8 @@ Client Key 鉴权完成后，API adapter 从有界请求头识别客户端，Cor
 - HTTP 明确未发送的瞬时建连失败（含 TLS 握手 EOF）共享最多 4 次 opening、30 秒的请求内预算；
   证书、TLS 协议及配置错误不进入同账号建连恢复，取消和执行 deadline 优先终止等待
 - downstream commit 记录不可撤回的首次交付；不可重放事件交付后禁止换号、重试和 fallback
+  HTTP 保活可先提交响应头，Core 记录该首字节时间与实际状态，但首个业务批次仍独立提交；
+  SSE 注释不构成业务输出或上游已发送的证明，也不改变重放资格
   原生 Responses Lite WebSocket 及时交付正常事件，仅 Provider 明确标记的可替换前导保留重试资格；Core 单独维护重放屏障，
   仍检查错误分类、续接归属、发送状态、副作用及预算。中间件链不启用此前导例外
 - API 在最终错误编码出口投影客户端恢复信号；该投影不修改 Provider 上游事实，也不改变 Core 的

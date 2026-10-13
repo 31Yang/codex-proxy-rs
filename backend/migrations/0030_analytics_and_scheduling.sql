@@ -2,13 +2,6 @@
 alter table request_analytics_15m add column last_used_at timestamptz;
 alter table request_analytics_hourly add column last_used_at timestamptz;
 
--- 新指标只重建时间桶，不清空窄事实，也不重置已经完成的历史投影游标
-insert into request_analytics_pending_buckets(bucket_start, oldest_pending_at)
-select distinct date_bin(interval '15 minutes', started_at, timestamptz '2000-01-01 UTC'), now()
-from request_analytics_facts
-on conflict (bucket_start) do update
-set change_version = nextval('request_analytics_change_version');
-
 -- 撤销最近一次模型贡献后按真实源定位极值，避免扫描整个账号历史
 create index model_requests_delivered_account_model on model_requests
 (provider_account_ref,(coalesce(upstream_model_id,requested_model_id,'')),started_at desc,id desc)
@@ -31,3 +24,25 @@ create index request_analytics_facts_build_cursor on request_analytics_facts
 (started_at,id collate "C");
 create index request_analytics_15m_build_cursor on request_analytics_15m
 (bucket_start,collection collate "C",dimensions collate "C",outcome collate "C");
+
+-- 完成时间边界只回读五分钟内的窄事实，Provider 文档继续使用源表采样索引
+create index request_analytics_facts_account_completion on request_analytics_facts
+(provider_account_ref,completed_at,started_at)
+where completed_at is not null and outcome <> 'running';
+
+-- 新指标只重建时间桶，不清空窄事实，也不重置已经完成的历史投影游标
+insert into request_analytics_pending_buckets(bucket_start, oldest_pending_at)
+select distinct date_bin(interval '15 minutes', started_at, timestamptz '2000-01-01 UTC'), now()
+from request_analytics_facts
+on conflict (bucket_start) do update
+set change_version = nextval('request_analytics_change_version');
+
+-- 移除账号请求间隔，保留刷新与并发配置的约束
+alter table runtime_settings
+  drop constraint runtime_settings_refresh_ck,
+  drop column request_interval_ms,
+  add constraint runtime_settings_refresh_ck check (
+    refresh_margin_seconds > 0
+    and refresh_concurrency > 0
+    and max_concurrent_per_account >= 0
+  );

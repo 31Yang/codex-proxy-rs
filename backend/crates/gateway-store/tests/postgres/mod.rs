@@ -18,6 +18,7 @@ mod admission_recovery;
 mod analytics;
 mod analytics_buckets;
 mod analytics_reset;
+mod analytics_upgrade;
 mod backup;
 mod client_budgets;
 mod client_keys;

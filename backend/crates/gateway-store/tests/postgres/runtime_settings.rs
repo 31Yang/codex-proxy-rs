@@ -61,7 +61,7 @@ fn runtime_settings_keep_account_rotation_global() {
 #[tokio::test]
 async fn removing_request_interval_preserves_settings_and_snapshot() {
     use gateway_store::postgres::{PgRuntimeSnapshotRepository, RuntimeSnapshotRepository};
-    let Some(database) = TestDatabase::create_through("drop_interval", 31).await else {
+    let Some(database) = TestDatabase::create_through("drop_interval", 29).await else {
         return;
     };
     sqlx::query("update runtime_settings set request_interval_ms = 60000, max_concurrent_per_account = 7, refresh_concurrency = 12, refresh_margin_seconds = 1234, config_revision = 70 where id = 1")

@@ -1,9 +1,5 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  readonly VITE_API_TIMEOUT_MS?: string
-}
-
 declare module '@fontsource-variable/inter'
 declare module '@fontsource-variable/jetbrains-mono'
 

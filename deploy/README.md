@@ -564,10 +564,6 @@ docker compose -f deploy/compose.yaml up -d --no-build --wait
 
 升级后通过管理端版本接口或容器 image digest 确认运行实例的版本和 revision
 
-管理端请求默认等待 120 秒。直接构建前端时可通过进程环境 `VITE_API_TIMEOUT_MS` 指定毫秒数，
-例如 `VITE_API_TIMEOUT_MS=180000 pnpm --dir frontend build`，取值须为正整数。
-该值在构建时写入静态资源，修改后需要重新构建和部署前端。单个请求显式指定的时限仍优先
-
 构建元数据通过一次性进程环境传入：
 
 ```bash

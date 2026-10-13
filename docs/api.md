@@ -1375,7 +1375,7 @@ HTTP 返回 `429`，`error.code` 为 `key_daily_budget_exceeded` 或 `key_weekly
 | [隐私策略](#隐私策略) | `codexPrivacyPolicy` |
 | 模型映射 | `modelMappings` |
 | 凭据刷新 | `refreshMarginSeconds`、`refreshConcurrency` |
-| [并发与排队](#并发与排队) | `maxConcurrentPerAccount`、`maxWaitingPerKey`、`maxWaitingPerAccount`、`openaiGuardianReservedConcurrency`、`concurrencyWaitTimeoutSeconds`、`requestIntervalMs` |
+| [并发与排队](#并发与排队) | `maxConcurrentPerAccount`、`maxWaitingPerKey`、`maxWaitingPerAccount`、`openaiGuardianReservedConcurrency`、`concurrencyWaitTimeoutSeconds` |
 | [亲和与换号](#账号亲和与换号) | `openaiAccountAffinity`、`openaiSessionAffinityTtlHours`、`maxAccountRotations` |
 | [调度策略](#智能调度) | `rotationStrategy`、`smartScheduling` |
 | [请求解压](#请求解压上限) | `responsesMaxDecompressedBodyBytes` |
@@ -1448,7 +1448,7 @@ JSON 路径支持 `$`、`.成员`、`["带特殊字符的键"]`、`[索引]`、`
 
 `maxConcurrentPerAccount` 是默认账号并发上限，取值 0～4294967295；`0` 表示不限制。
 账号的 `concurrencyLimit: null` 继承该默认值，单独设置的正数上限仍优先生效。
-无限并发仍统计在途请求，并遵守最小请求间隔、账号可用性与 Client Key 限制
+无限并发仍统计在途请求，并遵守账号可用性与 Client Key 限制
 
 `maxWaitingPerKey` 与 `maxWaitingPerAccount` 是全局统一的普通排队容量，取值 0～1,000，默认 0（关闭）；
 每个 Key、每个账号各自独立计数，没有单对象覆盖字段。执行并发为 5、最大排队数为 5 时，
@@ -1464,14 +1464,14 @@ Guardian 以 `subagent_kind` 或 `client_metadata.x-openai-subagent` 值 `guardi
 例如 L 为 10、R 为 3 时，可以同时运行 10 个普通请求和 3 个审批请求；普通并发不限时，审批仍受 R 限制。
 设为 0 时关闭独立额度，Guardian 使用普通并发。开启账号排队后，审批请求单独按 FIFO 等待，
 不受普通队列位置或单账号排队上限约束，仍受自身队列总等待容量与等待时限约束。
-两类请求仍遵守账号最小请求间隔、可用性和 Client Key 限额。设置更新请求须包含该字段
+两类请求仍遵守账号可用性和 Client Key 限额。设置更新请求须包含该字段
 
 ### 账号亲和与换号
 
 `openaiAccountAffinity` 控制 OpenAI 账号亲和，默认 `strict`（严格）：
 
 - `relaxed`（宽松）：会话内请求直接按 `rotationStrategy` 选号，不优先主账号
-- `preferred`（优先）：会话内所有可关联请求优先主账号，并发已满、请求间隔未到、额度耗尽、停用、限流冷却或不支持当前模型时临时分流，保留会话绑定，后续请求仍优先主账号
+- `preferred`（优先）：会话内所有可关联请求优先主账号，并发已满、额度耗尽、停用、限流冷却或不支持当前模型时临时分流，保留会话绑定，后续请求仍优先主账号
 - `strict`（严格）：同一会话共用账号，后代请求等待当前账号并跟随根请求换号
 
 插件显式选号及原生续写的状态归属约束在三种模式下仍然生效

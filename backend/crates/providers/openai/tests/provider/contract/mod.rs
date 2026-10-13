@@ -1394,7 +1394,7 @@ fn planned_request_with_presentation(
     }
     let snapshot = RuntimeSnapshot::new(
         ConfigRevision::new(1).expect("revision"),
-        gateway_core::settings::SettingsValues::new(2, 10, "smart", Default::default(), None, None),
+        gateway_core::settings::SettingsValues::new(2, "smart", Default::default(), None, None),
         vec![provider],
         vec![catalog_model],
         Vec::new(),
@@ -1423,7 +1423,7 @@ fn planned_provider_endpoint_request(provider_name: &str, operation: Operation) 
     ));
     let snapshot = RuntimeSnapshot::new(
         ConfigRevision::new(1).expect("revision"),
-        gateway_core::settings::SettingsValues::new(2, 10, "smart", Default::default(), None, None),
+        gateway_core::settings::SettingsValues::new(2, "smart", Default::default(), None, None),
         vec![provider.clone()],
         Vec::new(),
         Vec::new(),
@@ -12718,7 +12718,6 @@ async fn public_catalog_filters_each_api_account_before_union_without_gating_inf
             revision,
             SettingsValues::new(
                 3,
-                0,
                 "smart",
                 BTreeMap::from([
                     ("gpt-public".into(), "gpt-5.4".into()),

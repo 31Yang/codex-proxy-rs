@@ -676,7 +676,6 @@ fn plan(operation: &Operation) -> RoutingPlan {
         AccountSelectionPolicy::new(
             RotationStrategy::Smart,
             NonZeroU32::new(2).expect("account concurrency"),
-            Duration::from_millis(50),
         ),
     )
 }
@@ -757,7 +756,6 @@ fn plan_with_profiles(
         ConfigRevision::new(1).expect("config revision"),
         gateway_core::settings::SettingsValues::new(
             account_selection_policy.max_concurrent_per_account().get(),
-            u64::try_from(account_selection_policy.request_interval().as_millis()).unwrap(),
             account_selection_policy.strategy().as_str(),
             Default::default(),
             None,
@@ -829,7 +827,7 @@ fn dual_provider_plan(operation: &Operation) -> RoutingPlan {
     let directory = Arc::new(RuntimeAccountDirectory::new(entries));
     let snapshot = RuntimeSnapshot::new(
         ConfigRevision::new(1).expect("config revision"),
-        gateway_core::settings::SettingsValues::new(2, 50, "smart", Default::default(), None, None),
+        gateway_core::settings::SettingsValues::new(2, "smart", Default::default(), None, None),
         vec![openai.clone(), xai.clone()],
         vec![
             ProviderModel::new(
@@ -2161,7 +2159,6 @@ fn unavailable_native_continuation_uses_provider_recovery_with_the_configured_ac
         let policy = AccountSelectionPolicy::new(
             RotationStrategy::RoundRobin,
             NonZeroU32::new(2).expect("account concurrency"),
-            Duration::from_millis(50),
         );
         let route_plan = plan_with_policy(&operation, policy);
         let (coordinator, store, provider) = coordinator(vec![
@@ -5731,13 +5728,9 @@ fn configured_rotation_budget_limits_actual_account_changes() {
         let operation = generate_operation();
         let route_plan = plan_with_policy(
             &operation,
-            AccountSelectionPolicy::new(
-                RotationStrategy::Smart,
-                NonZeroU32::new(2).unwrap(),
-                Duration::ZERO,
-            )
-            .with_max_account_rotations(budget)
-            .with_openai_session_affinity_ttl(Duration::from_secs(168 * 3600)),
+            AccountSelectionPolicy::new(RotationStrategy::Smart, NonZeroU32::new(2).unwrap())
+                .with_max_account_rotations(budget)
+                .with_openai_session_affinity_ttl(Duration::from_secs(168 * 3600)),
         );
         let (coordinator, store, provider) = coordinator(
             ROTATION_TEST_ACCOUNTS
@@ -5784,12 +5777,8 @@ fn larger_rotation_budget_reaches_a_healthy_account_after_four_failures() {
     let operation = generate_operation();
     let route_plan = plan_with_policy(
         &operation,
-        AccountSelectionPolicy::new(
-            RotationStrategy::Smart,
-            NonZeroU32::new(2).unwrap(),
-            Duration::ZERO,
-        )
-        .with_max_account_rotations(4),
+        AccountSelectionPolicy::new(RotationStrategy::Smart, NonZeroU32::new(2).unwrap())
+            .with_max_account_rotations(4),
     );
     let mut scripts = ROTATION_TEST_ACCOUNTS[..4]
         .iter()
@@ -5825,12 +5814,8 @@ fn zero_rotation_budget_still_allows_retrying_the_same_account() {
     let operation = generate_operation();
     let route_plan = plan_with_policy(
         &operation,
-        AccountSelectionPolicy::new(
-            RotationStrategy::Smart,
-            NonZeroU32::new(2).unwrap(),
-            Duration::ZERO,
-        )
-        .with_max_account_rotations(0),
+        AccountSelectionPolicy::new(RotationStrategy::Smart, NonZeroU32::new(2).unwrap())
+            .with_max_account_rotations(0),
     );
     let (coordinator, _, provider) = coordinator(vec![
         Script::Stream {

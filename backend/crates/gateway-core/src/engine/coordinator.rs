@@ -560,8 +560,6 @@ where
             match self.pull().await? {
                 PullOutcome::Events(events) => {
                     self.replay_barrier_reached |= self.middleware.is_some()
-                        || self.client_transport != super::execution::ClientTransport::WebSocket
-                        || self.response_control.is_none()
                         || events.iter().any(|event| !event.is_replayable_prelude());
                     let requirement = if self.delivery_committed {
                         CommitRequirement::AlreadyCommitted

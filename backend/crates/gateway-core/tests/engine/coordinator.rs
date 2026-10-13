@@ -4287,6 +4287,85 @@ fn structural_event_before_replay_safe_failure_should_switch_account_before_comm
 }
 
 #[test]
+fn delivered_prelude_allows_retry_without_control_until_non_replayable_delivery() {
+    for close_window in [false, true] {
+        let operation = generate_operation();
+        let route_plan = plan(&operation);
+        let prelude = || {
+            ProviderEvent::wire(
+                ProtocolWireEvent::json(
+                    "openai",
+                    Some("response.created".to_owned()),
+                    json!({"type":"response.created","response":{"id":"response-1","output":[]}}),
+                )
+                .unwrap(),
+            )
+            .with_replayable_prelude()
+        };
+        let mut items = vec![Ok(prelude())];
+        if close_window {
+            items.push(Ok(ProviderEvent::wire(
+                ProtocolWireEvent::json(
+                    "openai",
+                    Some("response.future".to_owned()),
+                    json!({"type":"response.future"}),
+                )
+                .unwrap(),
+            )));
+            // 后续前导不能撤销已经交付未知事件的事实
+            items.push(Ok(prelude()));
+        }
+        items.push(Err(ProviderError::new(
+            ProviderErrorKind::Transport,
+            UpstreamSendState::Sent,
+        )
+        .with_replay_safe()));
+        let (coordinator, store, provider) = coordinator(vec![
+            Script::ObservedStream {
+                account_id: "acct_first",
+                items,
+            },
+            Script::Stream {
+                account_id: "acct_second",
+                items: complete_stream(None),
+            },
+        ]);
+        let mut session = block_on(coordinator.start(
+            model_request(&operation, SystemTime::now() + Duration::from_secs(30)),
+            operation,
+            route_plan,
+            None,
+            None,
+            CancellationToken::new(),
+        ))
+        .unwrap();
+        let first = block_on(session.next_event()).unwrap().unwrap();
+        assert!(first.into_provider_events()[0].is_replayable_prelude());
+        block_on(session.commit_downstream(Some(200))).unwrap();
+        let result = loop {
+            match block_on(session.next_event()) {
+                Ok(Some(_)) => {}
+                terminal => break terminal,
+            }
+        };
+        assert_eq!(result.is_err(), close_window);
+        let attempts = if close_window { 1 } else { 2 };
+        assert_eq!(provider.contexts.lock().unwrap().len(), attempts);
+        let state = store.state.lock().unwrap();
+        assert_eq!(state.commits, 1);
+        assert_eq!(state.intermediate_failures, attempts - 1);
+        assert_eq!(
+            state.finalizations[0].outcome,
+            if close_window {
+                ExecutionOutcome::Incomplete
+            } else {
+                ExecutionOutcome::Succeeded
+            }
+        );
+    }
+}
+
+#[test]
 fn cancellation_before_pending_delivery_commit_reaches_terminal_state() {
     let operation = generate_operation();
     let route_plan = plan(&operation);

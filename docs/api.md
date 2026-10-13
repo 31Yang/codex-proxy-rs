@@ -443,20 +443,22 @@ xAI 的 `reasoning.effort` 接受 `none / minimal / low / medium / high / xhigh 
 
 #### 容量拒绝与重试
 
-原生 Responses Lite WebSocket 在未启用中间件链时，按顺序及时交付正常事件，
-让客户端取得中断所需的响应 ID。无输出的 `response.created`、`response.in_progress`
+Responses 的 HTTP/SSE 与 WebSocket 按顺序即时交付正常事件，不暂存前导等待后续输出。
+未启用中间件链时，无输出的 `response.created`、`response.in_progress`
 及 `codex.response.metadata`、`codex.rate_limits` 元数据交付后仍可按已有安全条件重试，
 客户端可能收到下一次尝试的新 `response.created`。
-其他事件也立即交付，但会关闭透明重试窗口，后续前导事件不再恢复重试资格；
-错误事件先按既有重试规则处理，无法重试时交付错误
+其他事件也立即交付，但会关闭透明重试窗口，后续前导事件不再恢复重试资格。
+中间件链不启用可替换前导例外；错误事件先按既有重试规则处理，无法重试时交付错误
 
-其他 WebSocket 与 HTTP/SSE 的前导事件保留到首次有效文本、推理、工具活动或终态再交付。
-前导缓冲不另设等待时长或累计体积上限，等待沿用[请求期限](#请求期限)与传输超时配置。
+等待沿用[请求期限](#请求期限)与传输超时配置。
 WebSocket 独立 Ping 保活；Responses HTTP 流式请求完成准入后，执行仍在等待且连续 15 秒无输出时提交 `200`
-和 SSE 注释心跳，此后的等待继续每 15 秒保活，包括请求中间件等待和前导事件缓冲。
+和 SSE 注释心跳，此后的等待继续每 15 秒保活，包括请求中间件等待和上游尚未返回事件。
 首次心跳前仍保留最终 HTTP 状态与响应头；心跳发出后发生的失败使用 `response.failed` 和 `[DONE]`，
 后续取得的上游或插件响应头无法再补发，`Retry-After` 转入流内错误的 `response.error.headers`。
-心跳不代表业务输出，不关闭已有的安全重试窗口
+心跳不代表业务输出，不关闭已有的安全重试窗口。
+SSE 注释和 WebSocket Ping/Pong 不重置官方 Codex 客户端的事件空闲超时，
+其 `stream_idle_timeout_ms` 默认是 300 秒；长请求需持续收到真实事件，
+或同时调整客户端与上游传输的空闲等待预算，单独缩短心跳间隔不能延长业务等待
 
 WebSocket 在交付有效输出前断线或超时，可按 `stream_max_retries` 做同账号、有退避的尽力重试
 （默认最多 5 次），耗尽后仅在请求允许时改用 HTTP。已发送或发送结果不明不单独阻止这项恢复；
@@ -1952,9 +1954,9 @@ WebSocket 握手默认请求专项计时，客户端显式提供的开关保留�
 
 管理端下载的诊断包 `schemaVersion: 4` 用于人工反馈，不是备份或导入格式。它包含关联 ID、错误分类摘要、
 请求与错误事件各自的状态、attempt、时间线阶段、计时和上述失败分类。
-`provider.precommit.released` 事件的 `precommitRelease` 保留 `reason / prefetchedBytes / waitMs`，
-分别表示 Provider 释放缓存的原因、累计预取字节数和等待毫秒数，不等同于下游已提交。
-当前释放原因为 `semantic_output / terminal / eof`，导出也接受历史记录中的 `grace_timeout / byte_limit`。
+诊断包兼容已有 `provider.precommit.released` 记录，其 `precommitRelease` 保留 `reason / prefetchedBytes / waitMs`，
+分别表示 Provider 释放暂存的原因、累计预取字节数和等待毫秒数，不等同于下游已提交。
+导出接受记录中的 `semantic_output / terminal / eof / grace_timeout / byte_limit`。
 数值只允许非负安全整数，缺失或未通过校验的字段为 `null`；其他事件的 `precommitRelease` 为 `null`
 
 诊断包不自动导出 message/raw error、任意 metadata、其他 trace event data、请求响应正文和头部。

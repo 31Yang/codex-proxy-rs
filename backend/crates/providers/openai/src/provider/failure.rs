@@ -351,6 +351,7 @@ pub(super) async fn apply_failure(
     {
         tracing::warn!(
             account_id = %account.id(),
+            credential_revision = account.revision().get(),
             error = %error,
             "Failed to persist OpenAI response cookies"
         );
@@ -711,7 +712,6 @@ pub(super) fn stream_transport_allows_pre_delivery_retry(error: &CodexClientErro
 pub(super) fn map_canonical_error(
     error: CodexCanonicalError,
     diagnostics: &CodexUpstreamDiagnostics,
-    set_cookie_headers: &[String],
     rate_limit_headers: &[(String, String)],
     replay_boundary: ReplayBoundary,
 ) -> MappedProviderFailure {
@@ -721,7 +721,8 @@ pub(super) fn map_canonical_error(
             CodexUpstreamFailure::from_sse_failure(
                 &failure,
                 diagnostics,
-                set_cookie_headers,
+                // 响应头在开始消费流时已写回，流内失败不重放同一批 Cookie
+                &[],
                 rate_limit_headers,
                 CodexUpstreamSendPhase::AfterPayload,
             ),

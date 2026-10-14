@@ -1700,7 +1700,8 @@ Windows 离线包接口固定解析 Microsoft Store Product ID `9PLM9XGG6VKS` �
 产品 ID、上游地址、ring 或文件名。后端只返回通过包名、架构、Microsoft CDN host/path、scheme 和失效
 时间校验的 `x64` / `arm64` MSIX 直链，不代理安装包字节。Store 内容通道返回 HTTP/80 临时地址时保留
 原始 scheme，不强制改写为该 host 不保证支持的 HTTPS。动态链接不足 10 分钟即失效时不会下发；某个架构
-解析失败时只将该架构降级到 OpenAI 官方 HTTPS 稳定 MSIX，并通过 `warning` 说明。响应形状为：
+解析失败时只将该架构降级到 OpenAI 官方 HTTPS 稳定 MSIX，并通过 `warning` 说明。Store 解析最多等待
+30 秒，官方回退包通过最多 3 秒的 HEAD 请求补充大小，大小查询失败不影响下载地址。响应形状为：
 
 ```json
 {
@@ -1713,7 +1714,7 @@ Windows 离线包接口固定解析 Microsoft Store Product ID `9PLM9XGG6VKS` �
       "source": "microsoft_store",
       "version": "26.825.6671.0",
       "fileName": "OpenAI.Codex_26.825.6671.0_x64__2p2nqsd0c76g0.msix",
-      "sizeBytes": 744250000,
+      "sizeBytes": 780402688,
       "downloadUrl": "http://dl.delivery.mp.microsoft.com/filestreamingservice/files/...",
       "expiresAt": "2026-09-01T07:30:00Z"
     }

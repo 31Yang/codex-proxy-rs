@@ -2,6 +2,7 @@
 
 use super::precommit::stream_failure;
 use super::*;
+use gateway_core::error::TransientRetryPolicy;
 
 #[tokio::test]
 async fn server_error_503_stream_recovery_requires_no_semantic_output() {
@@ -73,8 +74,17 @@ async fn server_error_503_stream_recovery_requires_no_semantic_output() {
             } else {
                 assert!(!error.retry_is_prohibited());
                 assert!(
-                    matches!(error.pre_delivery_retry(), Some(PreDeliveryRetry::SameAccountTransientRetry { max_retries, initial_delay, max_delay })
-                    if max_retries.get() == 3 && initial_delay == Duration::from_millis(500) && max_delay == Duration::from_secs(8))
+                    matches!(error.pre_delivery_retry(), Some(PreDeliveryRetry::SameAccountTransientRetry {
+                        max_retries,
+                        initial_delay,
+                        max_delay,
+                        jitter,
+                        policy: TransientRetryPolicy::RetryThenReturnError,
+                    }) if max_retries.get() == 5
+                        && initial_delay == Duration::from_millis(500)
+                        && max_delay == Duration::from_secs(2)
+                        && jitter >= Duration::from_millis(50)
+                        && jitter < Duration::from_millis(250))
                 );
                 assert!(
                     events
@@ -136,7 +146,10 @@ async fn server_error_503_opening_rejections_request_bounded_retry_and_keep_resp
         assert!(!error.retry_is_prohibited());
         assert!(matches!(
             error.pre_delivery_retry(),
-            Some(PreDeliveryRetry::SameAccountTransientRetry { .. })
+            Some(PreDeliveryRetry::SameAccountTransientRetry {
+                policy: TransientRetryPolicy::RetryThenReturnError,
+                ..
+            })
         ));
         assert_eq!(error.retry_after(), Some(Duration::from_secs(17)));
         let response = error.client_visible_upstream_response().unwrap();

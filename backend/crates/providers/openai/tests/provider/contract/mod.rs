@@ -8472,8 +8472,15 @@ async fn capacity_http_and_websocket_opening_rejections_use_bounded_business_ret
             assert_eq!(error.retry_after(), Some(Duration::from_secs(129600)));
             assert!(
                 matches!(error.pre_delivery_retry(), Some(PreDeliveryRetry::SameAccountTransientRetry {
-                max_retries, initial_delay, max_delay,
-            }) if max_retries.get() == 3 && initial_delay == Duration::from_millis(500) && max_delay == Duration::from_secs(8))
+                    max_retries,
+                    initial_delay,
+                    max_delay,
+                    jitter,
+                    policy: gateway_core::error::TransientRetryPolicy::RetryThenRotateAccount,
+                }) if max_retries.get() == 3
+                    && initial_delay == Duration::from_millis(500)
+                    && max_delay == Duration::from_secs(8)
+                    && jitter.is_zero())
             );
             assert!(provider_openai::openai_failure_affects_account_score(
                 &error

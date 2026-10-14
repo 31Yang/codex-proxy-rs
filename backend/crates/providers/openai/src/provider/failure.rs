@@ -1464,7 +1464,9 @@ pub(super) const fn provider_error_kind(category: CodexFailureCategory) -> Provi
             ProviderErrorKind::PermissionDenied
         }
         CodexFailureCategory::UsageLimitExhausted => ProviderErrorKind::QuotaExhausted,
-        CodexFailureCategory::RateLimited => ProviderErrorKind::RateLimited,
+        CodexFailureCategory::RateLimited | CodexFailureCategory::TurnRateLimited => {
+            ProviderErrorKind::RateLimited
+        }
         CodexFailureCategory::QuotaExhausted => ProviderErrorKind::QuotaExhausted,
         CodexFailureCategory::CloudflareChallenge
         | CodexFailureCategory::CloudflarePathBlocked
@@ -1519,6 +1521,7 @@ pub(super) fn account_failure(
             Some(CodexAccountFailure::CloudflarePathBlocked)
         }
         CodexFailureCategory::ModelUnsupported
+        | CodexFailureCategory::TurnRateLimited
         | CodexFailureCategory::InvalidRequest
         | CodexFailureCategory::PermissionDenied
         | CodexFailureCategory::Timeout

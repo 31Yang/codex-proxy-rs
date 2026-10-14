@@ -36,7 +36,7 @@ pub enum CodexUpstreamSendPhase {
     Ambiguous,
 }
 
-/// Transport 边界对上游失败的账号级分类
+/// Transport 边界对上游失败的分类
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CodexFailureCategory {
     ModelUnsupported,
@@ -46,6 +46,8 @@ pub enum CodexFailureCategory {
     /// 当前用量窗口已经耗尽，但存在自动恢复的重置时间
     UsageLimitExhausted,
     RateLimited,
+    /// 当前 turn 的限流交给客户端等待，不据此推导账号级冷却
+    TurnRateLimited,
     QuotaExhausted,
     CloudflareChallenge,
     CloudflarePathBlocked,
@@ -174,7 +176,7 @@ impl CodexUpstreamFailure {
         }
     }
 
-    /// 返回账号级失败分类
+    /// 返回上游失败分类
     #[must_use]
     pub const fn category(&self) -> CodexFailureCategory {
         self.category
@@ -388,6 +390,9 @@ fn classify_upstream_failure(
 
     if code == "flex_unavailable" {
         return CodexFailureCategory::FlexUnavailable;
+    }
+    if code == "turn_rate_limit_exceeded" {
+        return CodexFailureCategory::TurnRateLimited;
     }
 
     // 容量拒绝可能带 400/429/503；仅用结构化错误字段识别，不能扫描任意正文

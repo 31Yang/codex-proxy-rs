@@ -44,6 +44,32 @@ fn flex_capacity_rejection_should_be_terminal_even_before_payload_send() {
 }
 
 #[test]
+fn turn_rate_limit_does_not_grant_proxy_replay_or_account_cooldown() {
+    for phase in [
+        CodexUpstreamSendPhase::BeforePayload,
+        CodexUpstreamSendPhase::AfterPayload,
+        CodexUpstreamSendPhase::Ambiguous,
+    ] {
+        let failure = CodexUpstreamFailure::from_response(
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+            r#"{"error":{"code":"turn_rate_limit_exceeded","type":"rate_limit_error","message":"Retry this turn later."}}"#,
+            Some(53),
+            &CodexUpstreamDiagnostics::default(),
+            None,
+            &[],
+            &[],
+            phase,
+        );
+        assert_eq!(failure.category(), CodexFailureCategory::TurnRateLimited);
+        assert!(!failure.replay_is_safe());
+    }
+    assert_eq!(
+        classify(429, r#"{"error":{"message":"turn_rate_limit_exceeded"}}"#),
+        CodexFailureCategory::RateLimited
+    );
+}
+
+#[test]
 fn server_error_replay_requires_explicit_503_and_unambiguous_send() {
     for (status, body, retryable) in [
         (

@@ -114,7 +114,9 @@ impl CodexBackendClient {
         upstream_request: &CodexResponsesRequest,
         context: CodexRequestContext<'_>,
     ) -> CodexClientResult<CodexBackendStreamingResponse> {
-        let mut headers = self.request_headers_for_http_response(upstream_request, context)?;
+        let profile = self.profile.snapshot();
+        let mut headers =
+            self.request_headers_for_http_response(&profile, upstream_request, context)?;
         let headers_started_at = Instant::now();
         // OAuth 请求遵循 Codex 压缩合同；API Key 上游使用普通 JSON
         // Codex 上游只交付 SSE；即使下游请求 `stream: false`，也要上游流式执行，
@@ -127,6 +129,7 @@ impl CodexBackendClient {
         if self.protocol == OpenAiUpstreamProtocol::Codex {
             headers.insert(CONTENT_ENCODING, HeaderValue::from_static("zstd"));
         }
+        profile.apply_context_versions(&mut upstream_body);
         self.apply_privacy(&mut upstream_body, &mut headers)?;
         let body =
             serde_json::to_vec(&upstream_body).map_err(CodexClientError::RequestBodyEncode)?;
@@ -284,10 +287,12 @@ impl CodexBackendClient {
         }
 
         let mut websocket_request = websocket_upstream_request(request);
+        let profile = self.profile.snapshot();
         let mut headers =
-            self.request_headers_for_websocket_response(&websocket_request, context)?;
+            self.request_headers_for_websocket_response(&profile, &websocket_request, context)?;
         let mut body = serde_json::Value::Object(std::mem::take(websocket_request.body_mut()));
         let original_headers = self.privacy.as_ref().map(|_| headers.clone());
+        profile.apply_context_versions(&mut body);
         self.apply_privacy(&mut body, &mut headers)?;
         *websocket_request.body_mut() = body.as_object().cloned().ok_or_else(|| {
             CodexClientError::Privacy(gateway_core::settings::privacy::PrivacyError {

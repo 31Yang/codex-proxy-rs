@@ -393,6 +393,10 @@ Client Key 鉴权完成后，API adapter 从有界请求头识别客户端，Cor
   本地指数退避从 500ms 开始，允许换号策略的基准上限为 8s，不换号策略为 2s；不换号策略每次另加 `[50ms, 250ms)` 随机等待
   有效的上游 `Retry-After` 优先于本地退避，不受本地上限截断，也不叠加随机等待；等待仍受取消和请求 deadline 约束
   该退避消耗总路由预算，与 WS 传输恢复、OAuth 刷新及账号额度冷却分开
+- `RetryThenReturnError` 的终态失败按 Client Key、逻辑线程与轮次写入 Redis，后续同轮次请求命中时跳过该策略的退避重试，直接交回错误；其他恢复策略不受影响
+  API 从明确的客户端推理请求提取轮次，Core 不解析协议正文；预热、压缩、内部调用和探测不参与该状态
+  标记在失败终态交付前写入并刷新 5 分钟 TTL；成功终态交付前按请求入场时读取的版本原子清理，迟到成功不能删除较新失败
+  Redis 操作最多等待 100ms，读取失败沿用原重试策略，更新失败保留原响应；TTL 到期或状态丢失后重新获得预算，不承诺精确识别客户端重试意图
 - OpenAI Provider 与 WS 传输层不暂存前导等待后续事件，正常帧按顺序即时交付；
   Provider 只保留单向推进的重放边界，实际输出、终态或未知事件关闭重放窗口。
   中间件链中的正常事件同样即时交付，但不保留可替换前导的重试资格。
@@ -823,7 +827,7 @@ PostgreSQL 周期对账才是正确性基础
 | 账号、credential、分组、Client Key、设置、审计、请求与备份记录 | PostgreSQL | 业务持久化事实 |
 | Client Key 金额窗口与费用事件 | PostgreSQL | 准入与幂等结算的权威账本，独立于请求观测与日志保留策略 |
 | 插件包体、安装来源、制品接受事实、实例配置与私有状态 | PostgreSQL | 完整信任决定绑定已接受摘要；进程内发布集合由持久化事实构建 |
-| admission、lease、cooldown、circuit、会话亲和、continuation、OAuth pending、目录 cache | Redis | 可重建、可过期的协调状态 |
+| admission、lease、cooldown、circuit、会话亲和、continuation、失败轮次、OAuth pending、目录 cache | Redis | 可重建、可过期的协调状态 |
 | 控制面统一登录会话与登录限流桶 | Redis | AuthService 唯一拥有；保存 Admin / Key 身份、绑定 ID、绝对有效期和计数，不保存原始凭据 |
 | 日志、OAuth 恢复记录、在线更新状态、备份暂存 | `.runtime/` | 部署节点本地运行文件 |
 | 重置卡库存与消费结果 | 对应 Provider 的上游 | 后端不建立本地卡库存；前端按账号在浏览器会话期间保留最近查询、未决消费幂等键与发送锁 |

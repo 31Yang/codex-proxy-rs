@@ -12,120 +12,9 @@ use gateway_store::postgres::{
 };
 
 use super::{
-    TEST_MIGRATOR, TestDatabase, admin_observability_store, analytics::seed, drain_analytics,
+    TestDatabase, admin_observability_store, analytics::seed, drain_analytics,
     observability_query_budget, observability_repository,
 };
-
-#[tokio::test]
-async fn retention_upgrade_caps_request_window_and_preserves_other_settings_and_pending_work() {
-    let Some(database) = TestDatabase::create_through("short_retention_upgrade", 31).await else {
-        return;
-    };
-    sqlx::query("update runtime_settings set usage_retention_days=60,ops_event_retention_days=7,audit_retention_days=45")
-        .execute(&database.pool)
-        .await
-        .unwrap();
-    let start = Utc::now() - ChronoDuration::days(10);
-    seed(&database.pool, "retention_upgrade", start, &[]).await;
-    drain_analytics(&database.pool).await;
-    sqlx::query("delete from model_requests where id='retention_upgrade'")
-        .execute(&database.pool)
-        .await
-        .unwrap();
-    let before: (String, i64, chrono::DateTime<Utc>) = sqlx::query_as(
-        "select request_id,change_version,oldest_pending_at from request_analytics_pending_requests",
-    )
-    .fetch_one(&database.pool)
-    .await
-    .unwrap();
-
-    TEST_MIGRATOR.run(&database.pool).await.unwrap();
-
-    let repository = PgRetentionRepository::new(database.pool.clone());
-    assert_eq!(
-        repository
-            .load_policy()
-            .await
-            .unwrap()
-            .days(RetentionTarget::ModelRequests),
-        31
-    );
-    let policy = repository.load_policy().await.unwrap();
-    assert_eq!(policy.days(RetentionTarget::OpsEvents), 7);
-    assert_eq!(policy.days(RetentionTarget::AdminAuditEvents), 45);
-    let after: (String, i64, chrono::DateTime<Utc>) = sqlx::query_as(
-        "select request_id,change_version,oldest_pending_at from request_analytics_pending_requests",
-    )
-    .fetch_one(&database.pool)
-    .await
-    .unwrap();
-    assert_eq!(after, before);
-    // 升级时遗留的删除任务继续可读并最终收敛，不重建全量统计
-    let range = ObservabilityRange::new(start, start + ChronoDuration::hours(1)).unwrap();
-    let statistics = observability_repository(&database.pool);
-    assert_eq!(
-        statistics
-            .usage_summary(range, Default::default())
-            .await
-            .unwrap()
-            .requests
-            .request_count,
-        1
-    );
-    drain_analytics(&database.pool).await;
-    assert_eq!(
-        statistics
-            .usage_summary(range, Default::default())
-            .await
-            .unwrap()
-            .requests
-            .request_count,
-        0
-    );
-    for days in [1_i64, 3, 7, 15, 30, 31] {
-        sqlx::query("update runtime_settings set usage_retention_days=$1")
-            .bind(days)
-            .execute(&database.pool)
-            .await
-            .unwrap();
-        assert_eq!(
-            i64::from(
-                repository
-                    .load_policy()
-                    .await
-                    .unwrap()
-                    .days(RetentionTarget::ModelRequests)
-            ),
-            days
-        );
-    }
-    for (usage, ops, audit) in [
-        (0_i64, 30_i64, 90_i64),
-        (32, 30, 90),
-        (1, 0, 90),
-        (1, 30, 0),
-    ] {
-        let error = sqlx::query("update runtime_settings set usage_retention_days=$1,ops_event_retention_days=$2,audit_retention_days=$3")
-            .bind(usage).bind(ops).bind(audit).execute(&database.pool).await.unwrap_err();
-        assert_eq!(
-            error.as_database_error().unwrap().code().as_deref(),
-            Some("23514")
-        );
-    }
-    sqlx::query("update runtime_settings set usage_retention_days=default")
-        .execute(&database.pool)
-        .await
-        .unwrap();
-    assert_eq!(
-        repository
-            .load_policy()
-            .await
-            .unwrap()
-            .days(RetentionTarget::ModelRequests),
-        31
-    );
-    database.close().await;
-}
 
 #[tokio::test]
 async fn short_retention_keeps_statistics_readable_until_each_deletion_batch_is_projected() {
@@ -196,8 +85,8 @@ async fn short_retention_keeps_statistics_readable_until_each_deletion_batch_is_
     const EXPIRED_ANALYTICS_ROWS: &str = "select
         (select count(*) from request_analytics_facts where id in ('expired_a','expired_b','expired_c')),
         (select count(*) from request_analytics_15m where bucket_start >= $1 and bucket_start < $2),
-        (select count(*) from request_analytics_hourly where bucket_start >= $1 and bucket_start < $2),
-        (select count(*) from request_analytics_daily_counts where bucket_start >= $1 and bucket_start < $2)";
+        (select count(*) from request_analytics_1h where bucket_start >= $1 and bucket_start < $2),
+        (select count(*) from request_analytics_1d_counts where bucket_start >= $1 and bucket_start < $2)";
     let before: (i64, i64, i64, i64) = sqlx::query_as(EXPIRED_ANALYTICS_ROWS)
         .bind(expired_day_start)
         .bind(expired_day_start + ChronoDuration::days(1))

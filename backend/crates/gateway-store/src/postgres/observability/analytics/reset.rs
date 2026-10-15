@@ -45,7 +45,7 @@ pub(super) async fn reset_obsolete_batch(
             "rollup",
         ),
         3 => (
-            "request_analytics_hourly",
+            "request_analytics_1h",
             "bucket_start,collection,dimensions,outcome",
             "rollup",
         ),

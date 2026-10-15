@@ -48,7 +48,7 @@ impl AnalyticsSnapshot<'_> {
         };
         let (hours, quarters) = self.summary_buckets(range, true).await?;
         for (table, seconds, buckets) in [
-            ("request_analytics_hourly", 3600, hours),
+            ("request_analytics_1h", 3600, hours),
             ("request_analytics_15m", 900, quarters),
         ] {
             if buckets.is_empty() {
@@ -243,7 +243,7 @@ impl AnalyticsSnapshot<'_> {
             .summary_buckets(range, range.start.timestamp().rem_euclid(3600) == 0)
             .await?;
         for (table, seconds, buckets) in [
-            ("request_analytics_hourly", 3600, hours),
+            ("request_analytics_1h", 3600, hours),
             ("request_analytics_15m", 900, quarters),
         ] {
             if buckets.is_empty() {

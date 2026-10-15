@@ -537,7 +537,7 @@ async fn high_cardinality_diagnostics_rank_whole_range_before_loading_distributi
         .unwrap()
         .with_timezone(&Utc);
     // 超过在线汇总行预算的高基数输入仍只返回全范围排名后的两个组
-    sqlx::query("insert into request_analytics_hourly(bucket_start,collection,dimensions,outcome,schema_version,histogram_version,counts,costs,distributions) select $1::timestamptz + hour*interval '1 hour','key',array['key_'||lpad(account::text,4,'0')],'succeeded',1,1,jsonb_build_object('request_count',case when account=1200 then 2 else 1 end),'{}','{}' from generate_series(0,99) hour cross join generate_series(1,1200) account")
+    sqlx::query("insert into request_analytics_1h(bucket_start,collection,dimensions,outcome,schema_version,histogram_version,counts,costs,distributions) select $1::timestamptz + hour*interval '1 hour','key',array['key_'||lpad(account::text,4,'0')],'succeeded',1,1,jsonb_build_object('request_count',case when account=1200 then 2 else 1 end),'{}','{}' from generate_series(0,99) hour cross join generate_series(1,1200) account")
         .bind(start).execute(&database.pool).await.unwrap();
     let result = observability_repository(&database.pool)
         .usage_diagnostics(
@@ -678,7 +678,7 @@ async fn interrupted_quarters_restart_changed_versions_and_publish_one_consisten
     let result = repo.usage_summary(range, Default::default()).await.unwrap();
     assert_eq!(result.requests.request_count, 3);
     assert_eq!(result.requests.total_tokens, 1140);
-    let total:i64=sqlx::query_scalar("select sum((counts->>'request_count')::bigint)::bigint from request_analytics_hourly where collection='global'").fetch_one(&database.pool).await.unwrap();
+    let total:i64=sqlx::query_scalar("select sum((counts->>'request_count')::bigint)::bigint from request_analytics_1h where collection='global'").fetch_one(&database.pool).await.unwrap();
     assert_eq!(total, 3);
     database.close().await;
 }
@@ -1449,7 +1449,7 @@ async fn daily_rank_counts_follow_rebuilds_rollbacks_deletions_and_dirty_days() 
         seed(&database.pool, id, day + TimeDelta::minutes(minutes), &[]).await;
     }
     drain_analytics(&database.pool).await;
-    let totals: Vec<i64> = sqlx::query_scalar("select request_count from request_analytics_daily_counts where collection='key' order by bucket_start")
+    let totals: Vec<i64> = sqlx::query_scalar("select request_count from request_analytics_1d_counts where collection='key' order by bucket_start")
         .fetch_all(&database.pool).await.unwrap();
     assert_eq!(totals, vec![2, 1]);
     let repo = observability_repository(&database.pool);
@@ -1462,17 +1462,17 @@ async fn daily_rank_counts_follow_rebuilds_rollbacks_deletions_and_dirty_days() 
         2
     );
     // 同值重放与事务回滚不能改变日计数，小时数据与派生计数共同提交
-    sqlx::query("update request_analytics_hourly set counts=counts where collection='key'")
+    sqlx::query("update request_analytics_1h set counts=counts where collection='key'")
         .execute(&database.pool)
         .await
         .unwrap();
     let mut rollback = database.pool.begin().await.unwrap();
-    sqlx::query("delete from request_analytics_hourly where collection='key'")
+    sqlx::query("delete from request_analytics_1h where collection='key'")
         .execute(&mut *rollback)
         .await
         .unwrap();
     rollback.rollback().await.unwrap();
-    let after: Vec<i64> = sqlx::query_scalar("select request_count from request_analytics_daily_counts where collection='key' order by bucket_start")
+    let after: Vec<i64> = sqlx::query_scalar("select request_count from request_analytics_1d_counts where collection='key' order by bucket_start")
         .fetch_all(&database.pool).await.unwrap();
     assert_eq!(after, totals);
     // 删除最后一条该日贡献时，派生行也随小时重建移除
@@ -1482,7 +1482,7 @@ async fn daily_rank_counts_follow_rebuilds_rollbacks_deletions_and_dirty_days() 
         .unwrap();
     drain_analytics(&database.pool).await;
     let rows: i64 = sqlx::query_scalar(
-        "select count(*) from request_analytics_daily_counts where collection='key'",
+        "select count(*) from request_analytics_1d_counts where collection='key'",
     )
     .fetch_one(&database.pool)
     .await
@@ -1490,7 +1490,7 @@ async fn daily_rank_counts_follow_rebuilds_rollbacks_deletions_and_dirty_days() 
     assert_eq!(rows, 1);
     // 模拟未发布日状态与任意 dirty quarter，查询必须从干净小时和事实重建完整分母
     sqlx::query(
-        "update request_analytics_daily_counts set request_count=999999 where collection='key'",
+        "update request_analytics_1d_counts set request_count=999999 where collection='key'",
     )
     .execute(&database.pool)
     .await
@@ -1576,7 +1576,7 @@ async fn high_cardinality_summary_merges_all_rows_before_returning_model_groups(
     let versions: (i32,i32) = sqlx::query_as("select schema_version,histogram_version from request_analytics_build_state where singleton=true")
         .fetch_one(&database.pool).await.unwrap();
     // 150 个模型乘以 744 小时超过旧汇总行上限，输出仍只有 150 个模型组
-    sqlx::query("insert into request_analytics_hourly(bucket_start,collection,dimensions,outcome,schema_version,histogram_version,counts,costs,distributions) select $1::timestamptz+hour*interval '1 hour','provider_model',array['openai','model_'||lpad(model::text,3,'0'),'model_'||lpad(model::text,3,'0')],'succeeded',$2,$3,jsonb_build_object('request_count',model,'total_tokens',model*120),jsonb_build_object('USD',(model::numeric*0.0000000001)::text),'{}' from generate_series(0,743) hour cross join generate_series(1,150) model")
+    sqlx::query("insert into request_analytics_1h(bucket_start,collection,dimensions,outcome,schema_version,histogram_version,counts,costs,distributions) select $1::timestamptz+hour*interval '1 hour','provider_model',array['openai','model_'||lpad(model::text,3,'0'),'model_'||lpad(model::text,3,'0')],'succeeded',$2,$3,jsonb_build_object('request_count',model,'total_tokens',model*120),jsonb_build_object('USD',(model::numeric*0.0000000001)::text),'{}' from generate_series(0,743) hour cross join generate_series(1,150) model")
         .bind(start).bind(versions.0).bind(versions.1).execute(&database.pool).await.unwrap();
     let result = observability_repository(&database.pool)
         .usage_diagnostics(

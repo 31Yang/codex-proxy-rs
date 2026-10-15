@@ -457,8 +457,8 @@ impl<'a> AnalyticsSnapshot<'a> {
         }
         query.push("), contributions as (select key,request_count from edge_facts");
         for (table, column, seconds, buckets) in [
-            ("request_analytics_daily_counts", "dimension", 86400, days),
-            ("request_analytics_hourly", "dimensions[1]", 3600, hours),
+            ("request_analytics_1d_counts", "dimension", 86400, days),
+            ("request_analytics_1h", "dimensions[1]", 3600, hours),
             ("request_analytics_15m", "dimensions[1]", 900, quarters),
         ] {
             if buckets.is_empty() {
@@ -637,7 +637,7 @@ impl<'a> AnalyticsSnapshot<'a> {
                 });
             let (hours, quarters) = self.summary_buckets(range, use_hourly).await?;
             for (table, seconds, buckets) in [
-                ("request_analytics_hourly", 3600, hours),
+                ("request_analytics_1h", 3600, hours),
                 ("request_analytics_15m", 900, quarters),
             ] {
                 if buckets.is_empty() {

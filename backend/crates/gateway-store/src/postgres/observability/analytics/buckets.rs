@@ -94,7 +94,7 @@ pub(super) async fn rebuild_bucket_batch(
         let table = if phase == 0 {
             "request_analytics_15m"
         } else {
-            "request_analytics_hourly"
+            "request_analytics_1h"
         };
         let start = if phase == 0 { bucket } else { hour };
         let statement = format!(
@@ -176,7 +176,7 @@ pub(super) async fn rebuild_bucket_batch(
                 .or_default()
                 .merge(&MetricState::decode(quarter)?)?;
         }
-        merge_staged_groups(tx, "request_analytics_hourly", hour, groups).await?;
+        merge_staged_groups(tx, "request_analytics_1h", hour, groups).await?;
         if rows.len() <= batch_size as usize {
             // 一次小时发布确认全部就绪 quarter，避免每个条目再次清空并重写同一小时
             let acknowledged = sqlx::query("delete from request_analytics_pending_buckets where bucket_start >= $1 and bucket_start < $1+interval '1 hour' and build_version=change_version and (build_phase=2 or (bucket_start=$2 and build_phase=4 and change_version=$3))")

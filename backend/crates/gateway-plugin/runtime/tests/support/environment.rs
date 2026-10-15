@@ -65,7 +65,7 @@ impl Environment {
         .await
         .unwrap();
         sqlx::query(sqlx::AssertSqlSafe(format!(
-            "insert into {}.client_key_budget_windows
+            "insert into {}.client_api_key_budget_windows
              (client_api_key_id, daily_start, daily_end, daily_used_usd, weekly_start, weekly_end, weekly_used_usd)
              values ($1, now(), now()+interval '1 day', 3, now(), now()+interval '7 days', 4)",
             self.schema

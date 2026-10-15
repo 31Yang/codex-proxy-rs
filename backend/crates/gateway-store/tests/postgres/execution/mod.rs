@@ -2094,7 +2094,7 @@ async fn zero_attempt_failure_does_not_enter_successful_usage_or_cost_aggregates
             .iter()
             .all(|point| { point.standard_amount.is_none() && point.no_cache_amount.is_none() })
     );
-    let charges: i64 = sqlx::query_scalar("select count(*) from client_key_charge_events")
+    let charges: i64 = sqlx::query_scalar("select count(*) from client_api_key_charge_events")
         .fetch_one(&database.pool)
         .await
         .expect("observations do not settle budgets");

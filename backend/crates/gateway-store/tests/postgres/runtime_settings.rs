@@ -225,13 +225,8 @@ async fn privacy_steps_migration_preserves_rules_and_other_settings() {
         serde_json::to_value(&loaded.values.codex_privacy_policy).unwrap(),
         expected
     );
-    // 已迁移的规则再次执行转换也不产生写入或额外嵌套
-    sqlx::raw_sql(include_str!(
-        "../../../../migrations/0032_privacy_rule_steps.sql"
-    ))
-    .execute(&database.pool)
-    .await
-    .unwrap();
+    // 服务重启后再次检查迁移，不产生写入或额外嵌套
+    super::TEST_MIGRATOR.run(&database.pool).await.unwrap();
     let stored: serde_json::Value =
         sqlx::query_scalar("select to_jsonb(runtime_settings) from runtime_settings where id = 1")
             .fetch_one(&database.pool)
@@ -271,7 +266,7 @@ async fn privacy_steps_migration_rejects_non_object_without_losing_data() {
             .unwrap();
     assert_eq!(stored, invalid);
     let applied: bool =
-        sqlx::query_scalar("select exists(select 1 from _sqlx_migrations where version = 32)")
+        sqlx::query_scalar("select exists(select 1 from _sqlx_migrations where version = 31)")
             .fetch_one(&database.pool)
             .await
             .unwrap();

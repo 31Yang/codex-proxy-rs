@@ -1,3 +1,6 @@
+-- 命名代理独立启停，保留连接配置和账号绑定
+alter table outbound_proxies add column enabled boolean not null default true;
+
 -- 非对象规则不能无损转换，拒绝升级以保留原始配置
 do $$
 begin

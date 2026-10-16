@@ -9,12 +9,12 @@ const REDACTED: &str = "<redacted>";
 const MAX_TEXT: usize = 256 * 1024;
 static INLINE: LazyLock<Vec<(Regex, &str)>> = LazyLock::new(|| {
     [
-        (r"(?i)\b((?:set-cookie|cookie2?)\s*:\s*)[^\r\n]+", "${1}<redacted>"),
+        (r"(?i)\b((?:set-cookie|cookie2?|(?:proxy-)?authorization|x-api-key|x-oai-is(?:-update)?|x-oai-attestation)\s*:\s*)[^\r\n]+", "${1}<redacted>"),
         (r#"(?i)\b(Bearer|Basic)\s+[^\s"'<>;,]+"#, "${1} <redacted>"),
         // 官方 TokenData 的 access_token / id_token 为 JWT，不按猜测的令牌前缀过滤普通文本
         (r"\beyJ[\w-]+\.[\w-]+\.[\w-]+\b", "<redacted>"),
         (r"(?i)([a-z][a-z0-9+.-]*://)[^\s/@]+@", "${1}<redacted>@"),
-        (r#"(?i)\b((?:(?:personal_?)?access_?token|refresh_?token|id_?token|(?:openai_)?api_?key|(?:current_|new_)?password|authorization|proxy-authorization)["']?\s*[=:]\s*)("[^"\r\n]*"|'[^'\r\n]*'|[^\s&,;]+)"#, "${1}<redacted>"),
+        (r#"(?i)\b((?:(?:personal[_-]?)?access[_-]?token|refresh[_-]?token|id[_-]?token|(?:(?:openai|x)[_-]?)?api[_-]?key|(?:current[_-]?|new[_-]?)?password|authorization|proxy[_-]?authorization|x[_-]?oai[_-]?(?:is(?:[_-]?update)?|attestation))["']?\s*[=:]\s*)("[^"\r\n]*"|'[^'\r\n]*'|[^\s&,;]+)"#, "${1}<redacted>"),
     ].into_iter().map(|(pattern, replacement)| (Regex::new(pattern).expect("static credential pattern"), replacement)).collect()
 });
 

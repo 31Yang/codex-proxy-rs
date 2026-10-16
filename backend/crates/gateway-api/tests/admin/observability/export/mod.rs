@@ -370,3 +370,33 @@ async fn selected_event_is_exported_once_and_shares_the_total_error_budget() {
             .any(|gap| gap["reason"] == "error_record_limit")
     );
 }
+
+#[tokio::test]
+async fn inline_authentication_headers_are_redacted_without_losing_error_context() {
+    let fixture = AdminTestFixture::new().await;
+    fixture.auth.insert_session("valid-session");
+    let mut error = ops_error_record();
+    error.error_details = Some(json!({
+        "headers": "x-api-key: fixture-api-key\nx-oai-is: fixture-session\nx-oai-is-update: fixture-update\nx-oai-attestation: fixture-attestation fixture-attestation-tail\nauthorization: Custom fixture-auth\nproxy-authorization: Custom fixture-proxy\nupstream timeout",
+        "message": "access-token=fixture-access; refresh-token=fixture-refresh; model=gpt-test",
+    }).to_string());
+    fixture.ops_errors.lock().unwrap().push(error);
+    let (status, _, file) = export(&fixture, "?requestId=req_err", true).await;
+    assert_eq!(status, StatusCode::OK);
+    let text = file.to_string();
+    for marker in [
+        "fixture-api-key",
+        "fixture-session",
+        "fixture-update",
+        "fixture-attestation",
+        "fixture-attestation-tail",
+        "fixture-auth",
+        "fixture-proxy",
+        "fixture-access",
+        "fixture-refresh",
+    ] {
+        assert!(!text.contains(marker), "leaked {marker}");
+    }
+    assert!(text.contains("upstream timeout"));
+    assert!(text.contains("model=gpt-test"));
+}

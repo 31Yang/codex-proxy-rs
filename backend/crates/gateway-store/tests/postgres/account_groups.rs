@@ -836,7 +836,7 @@ async fn image_generation_group_updates_preserve_omitted_values_and_publish_snap
 
 #[tokio::test]
 async fn image_generation_migration_allows_existing_and_default_groups() {
-    let Some(database) = TestDatabase::create_through("group_image_upgrade", 33).await else {
+    let Some(database) = TestDatabase::create_through("group_image_upgrade", 31).await else {
         return;
     };
     sqlx::query("insert into account_groups (id, name, color, created_at, updated_at) values ($1, $1, '#2563EBFF', now(), now())")

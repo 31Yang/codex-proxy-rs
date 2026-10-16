@@ -1445,7 +1445,7 @@ async fn preferred_affinity_migration_defaults_to_strict_and_preserves_saved_mod
 
 #[tokio::test]
 async fn removing_switchback_preserves_custom_weights_and_replaces_database_default() {
-    let Some(database) = TestDatabase::create_through("remove_switchback", 34).await else {
+    let Some(database) = TestDatabase::create_through("remove_switchback", 31).await else {
         return;
     };
     let expected =

@@ -1991,28 +1991,32 @@ WebSocket 握手默认请求专项计时，客户端显式提供的开关保留�
 
 ### 诊断与恢复关联
 
-详情接口按 `id` 可读取成功、失败或未完成请求，返回 `trace`（未采集记录为 `null`）和
-`relatedRequests[]`（`requestId / relation / outcome / completedAt`）；`relation` 为 `recovered_by` 或
-`recovers`。`trace` 是执行终态时的有界脱敏时间线，包含 request、attempt 和 exchange 关联、阶段、
-事件摘要及淘汰计数；普通用量列表不携带此字段。
-采集时，未知 JSON 键名与值只保留结构和摘要；事件摘要中的 `eventType` 为已知事件名称字符串、
-未知名称的 `{ bytes, sha256 }` 摘要，或缺失时的 `null`。已保存的 trace 不自动清理或回填，
-其中的 `sanitized` 标记不能作为可直接公开的保证
+详情接口按 `id` 可读取成功、失败或未完成请求，普通详情与列表不传输时间线。
+管理员通过 `GET /api/admin/diagnostics/export` 下载 JSON 附件，必须且只能指定
+`requestId` 或 `errorId`；`errorId` 指运维错误事件 ID，无模型请求的后台错误也能导出。
+响应不使用普通 JSON 信封，设置 `Content-Disposition: attachment` 与 `Cache-Control: private, no-store`
 
-`attempt.failed.data` 的 `kind / sendState / upstreamStatus` 与 `diagnostic.stage / diagnostic.code`
-由 Core 错误类型与 Provider 静态诊断生成；`diagnostic.message` 保存安全摘要。展示与导出共用这些字段，
-`sendState` 为 `not_sent / sent / ambiguous`，摘要被截断时带有 `truncated` 标记
+诊断包 `schemaVersion: 5` 用于故障分析，不是备份或导入格式。后端按目标 ID 收集请求、尝试、
+完整已存时间线、错误原因链、原始上游错误及恢复关联；前端只负责下载。
+`requests[].evidence` 保存详情、`trace`、`relatedRequests`、事发配置版本和尝试原因；
+`requests[].errors` 保存同一请求的错误记录，`error` 保存按事件 ID 选中的错误，该事件不在请求内重复导出。
+`environment.scope = export_time` 明确版本、构建与部署信息是导出时状态，不能代替事发环境
 
-管理端下载的诊断包 `schemaVersion: 4` 用于人工反馈，不是备份或导入格式。它包含关联 ID、错误分类摘要、
-请求与错误事件各自的状态、attempt、时间线阶段、计时和上述失败分类。
-诊断包兼容已有 `provider.precommit.released` 记录，其 `precommitRelease` 保留 `reason / prefetchedBytes / waitMs`，
-分别表示 Provider 释放暂存的原因、累计预取字节数和等待毫秒数，不等同于下游已提交。
-导出接受记录中的 `semantic_output / terminal / eof / grace_timeout / byte_limit`。
-数值只允许非负安全整数，缺失或未通过校验的字段为 `null`；其他事件的 `precommitRelease` 为 `null`
+`request.routed.data.accountPolicy` 保存执行时冻结的账号策略与预算。
+`attempt.failed.data.recovery` 保存 Provider 的重放安全性和恢复意图；`retry.decided` 保存当时
+实际参与决策的门槛、剩余预算和发送状态，`retry.policy` 保存宿主及插件策略的停止事实。
+已有的 `provider.precommit.released` 数据保留释放原因、预取字节数与等待时间，不等同于下游已提交
 
-诊断包不自动导出 message/raw error、任意 metadata、其他 trace event data、请求响应正文和头部。
-`availability` 与 `omitted` 明示未采集、不完整或主动省略的内容，`null` 不代表没有发生错误。
-版本、环境及原始错误片段仍需操作者另行补充并审阅脱敏
+采集阶段仍按有界 trace 合同处理未知 JSON 键和值，未知事件名称保留摘要；导出不会补造被省略的原文。
+下载端按 Provider 凭据、管理认证与传输头合同移除令牌、密钥、认证头、Cookie 和 URL 认证部分，
+移除账号联系信息及客户端 IP，保留关联 ID、错误 code/message、套餐、状态和重试事实。
+OAuth 字段依据 CPR 导出结构及官方 Codex `TokenData`，不按 `token / secret / credential` 等泛称删除业务字段。
+原始错误中可解析的嵌套 JSON 展开后脱敏；任意业务内容不属于凭据识别范围
+
+收集共享 20 秒预算，最多包含 8 个关联请求和 128 条错误记录，优先保留主请求的最终错误。
+导出另有文本、节点与深度预算，正文截断仍保留格式版本、目标和缺口；超限会写入 `exportTruncated`、`redaction.truncatedValues` 和缺口记录。
+`availability.gaps` 明示未记录、淘汰、截断、读取失败与旧记录缺少的决策事实，`omitted` 说明主动省略范围。
+异步观测尚未落盘、已过期记录、未采集的请求正文与上游内部状态无法由导出补回，`null` 不表示没有发生错误
 
 错误记录中的“已自动恢复”表示系统关联到了后续成功请求，不会把原来的失败记录改为成功。
 `upstreamSendState = ambiguous` 表示无法确认该次上游执行结果，不代表后续恢复请求失败；

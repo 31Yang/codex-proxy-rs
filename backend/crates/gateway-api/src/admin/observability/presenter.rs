@@ -535,8 +535,6 @@ pub(crate) fn usage_detail_view(
     time: crate::time::TimePresenter,
 ) -> UsageRecordDetailView {
     UsageRecordDetailView {
-        trace: detail.trace,
-        related_requests: detail.related_requests,
         request: usage_record_view(detail.request, time),
         attempts: detail
             .attempts
@@ -616,7 +614,7 @@ pub(crate) fn ops_error_view(
         subagent_kind: error.subagent_kind,
         compact: error.compact,
         message: error.message,
-        error_details: error.error_details,
+        error_details: error.error_details.map(error_details_view),
         metadata: OpsErrorMetadataView {
             source: error.source,
             component: error.component,
@@ -638,6 +636,20 @@ pub(crate) fn ops_error_view(
         created_at: error.occurred_at,
         created_at_display: time.datetime(&error.occurred_at),
     }
+}
+
+// 受控错误正文保持原文语义，嵌套 JSON 只在展示投影中展开缩进
+fn error_details_view(raw: String) -> String {
+    let Ok(mut value) = serde_json::from_str::<Value>(&raw) else {
+        return raw;
+    };
+    if let Some(upstream) = value.get_mut("upstream")
+        && let Some(text) = upstream.as_str()
+        && let Ok(parsed) = serde_json::from_str::<Value>(text)
+    {
+        *upstream = parsed;
+    }
+    serde_json::to_string_pretty(&value).unwrap_or(raw)
 }
 
 pub(crate) fn ops_page_view(

@@ -4,7 +4,7 @@ import type { OpsError } from '@/api'
 import { ZButton, ZDialog } from '@codex-proxy/ui'
 import { computed } from 'vue'
 import { failureClassText } from '../utils/opsErrorPresentation'
-import RequestDiagnosticsPanel from './RequestDiagnosticsPanel.vue'
+import DiagnosticsDownloadButton from './DiagnosticsDownloadButton.vue'
 import UsageDetailCodePanel from './UsageDetailCodePanel.vue'
 import UsageDetailFieldGrid from './UsageDetailFieldGrid.vue'
 
@@ -129,7 +129,6 @@ function visibleFields(items: DetailField[]) {
     width="64rem"
   >
     <template v-if="record">
-      <RequestDiagnosticsPanel v-if="record.requestId" class="mb-3" :request-id="record.requestId" :metadata="record.metadata" :error-record="record" :active="open" />
       <section :class="panelClass">
         <h3 :class="panelTitleClass">
           错误
@@ -180,6 +179,7 @@ function visibleFields(items: DetailField[]) {
     </template>
 
     <template #footer>
+      <DiagnosticsDownloadButton v-if="record" :request-id="record.requestId" :error-id="record.id" :active="open" />
       <ZButton type="primary" @click="open = false">
         关闭
       </ZButton>

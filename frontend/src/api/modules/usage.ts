@@ -1,6 +1,6 @@
 import type { RequestOptions } from '../request'
 import type { AnalyticsMetadata } from './analytics'
-import request from '../request'
+import request, { requestRaw } from '../request'
 
 export interface UsageTokenDetails {
   inputTokens: number | null
@@ -205,50 +205,7 @@ export interface UsageAttempt {
   completedAt: string | null
 }
 
-export interface RequestTraceEvent {
-  sequence: number
-  lastSequence: number
-  elapsedMs: number
-  lastElapsedMs: number
-  attemptIndex: number
-  exchangeId: number | null
-  stage: string
-  count: number
-  data: Record<string, unknown> & {
-    /** attempt.failed 由 Core 从 ProviderError 生成，分类与诊断只有这一份来源 */
-    kind?: string
-    sendState?: 'not_sent' | 'sent' | 'ambiguous'
-    upstreamStatus?: number | null
-    diagnostic?: {
-      stage: string | null
-      code: string | null
-      message: string
-      truncated?: boolean
-    } | null
-  }
-}
-
-export interface RequestTrace {
-  schemaVersion: number
-  requestId: string
-  startedAtUnixMs: number
-  totalEvents: number
-  droppedEvents: number
-  maxEvents: number
-  captureMode: string
-  events: RequestTraceEvent[]
-}
-
-export interface RelatedRequest {
-  requestId: string
-  relation: 'recovered_by' | 'recovers'
-  outcome: string
-  completedAt: string | null
-}
-
 export type UsageRecordDetail = UsageRecord & {
-  trace: RequestTrace | null
-  relatedRequests: RelatedRequest[]
   attempts: UsageAttempt[]
   /** 尝试列表是否完整；best-effort 下恒为 false。 */
   attemptsComplete: boolean
@@ -558,5 +515,18 @@ export function getUsageRecordInsightsDiagnostics(data: UsageDiagnosticsQuery, o
     method: 'GET',
     params: data,
     ...options,
+  })
+}
+
+export function downloadDiagnostics(data: { requestId: string } | { errorId: string }, options: RequestOptions = {}) {
+  return requestRaw({
+    url: '/api/admin/diagnostics/export',
+    method: 'GET',
+    params: data,
+    timeout: 25_000,
+    ...options,
+  }, {
+    maximumBytes: 16 * 1024 * 1024,
+    accept: response => response.status === 200 && !!response.header('content-type')?.startsWith('application/json'),
   })
 }

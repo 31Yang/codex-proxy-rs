@@ -1500,7 +1500,7 @@ UA、平台参数及自动 Git 上下文版本由 [OpenAI 上游客户端身份]
 
 ### 并发与排队
 
-`maxConcurrentPerAccount` 是默认账号并发上限，取值 0～4294967295；`0` 表示不限制。
+`maxConcurrentPerAccount` 是默认账号并发上限，初始值为 5，取值 0～4294967295；`0` 表示不限制。
 账号的 `concurrencyLimit: null` 继承该默认值，单独设置的正数上限仍优先生效。
 无限并发仍统计在途请求，并遵守账号可用性与 Client Key 限制
 

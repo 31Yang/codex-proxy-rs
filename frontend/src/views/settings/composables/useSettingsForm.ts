@@ -5,7 +5,7 @@ import { ZNotification } from '@codex-proxy/ui'
 import { cloneDeep, isEqual } from 'es-toolkit'
 
 import { computed, reactive, ref, shallowRef } from 'vue'
-import { getSettings, updateSettings } from '@/api'
+import { detectRequestLocation, getSettings, updateSettings } from '@/api'
 import { ApiError } from '@/api/request'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { normalizeRequestLocation, requestLocationError } from '@/utils/location'
@@ -19,6 +19,8 @@ export function useSettingsForm() {
   const loading = shallowRef(true)
   const saveAction = useAsyncAction()
   const saving = saveAction.loading
+  const locationAction = useAsyncAction()
+  const detectingLocation = locationAction.loading
   const error = shallowRef('')
   const mappings = ref<Array<{ requestedModel: string, upstreamModel: string }>>([])
   const smartSchedulingDefaults = shallowRef<SmartSchedulingConfig>()
@@ -69,7 +71,7 @@ export function useSettingsForm() {
     && !isEqual({ form, mappings: mappings.value }, saved.value))
 
   function resetSettings() {
-    if (!saved.value || saving.value)
+    if (!saved.value || saving.value || detectingLocation.value)
       return
     const initial = cloneDeep(saved.value)
     Object.assign(form, initial.form)
@@ -157,6 +159,8 @@ export function useSettingsForm() {
   }
 
   async function loadSettings(silent = false) {
+    if (detectingLocation.value)
+      return
     loading.value = true
     error.value = ''
     try {
@@ -168,6 +172,25 @@ export function useSettingsForm() {
     finally {
       loading.value = false
     }
+  }
+
+  async function detectLocation() {
+    if (saving.value || loading.value || error.value)
+      return
+    await locationAction.run(async () => {
+      const result = await detectRequestLocation()
+      if (result.status === 'detected') {
+        form.requestLocation = { ...result.location }
+        form.requestLocationEnabled = true
+        ZNotification.success({ message: '已填入出口位置' })
+      }
+      else if (result.status === 'conflict') {
+        ZNotification.warning({ message: 'IPv4 与 IPv6 出口时区不一致，请手动填写' })
+      }
+      else {
+        ZNotification.warning({ message: result.status === 'failed' ? result.message : '未获取到出口位置' })
+      }
+    })
   }
 
   function addMapping() {
@@ -207,7 +230,7 @@ export function useSettingsForm() {
     if (!smartScheduling)
       return
     const savedSettings = saved.value
-    if (saving.value || loading.value || !savedSettings)
+    if (saving.value || loading.value || detectingLocation.value || !savedSettings)
       return
     const { refreshMarginSeconds, refreshConcurrency, maxConcurrentPerAccount, openaiGuardianReservedConcurrency, openaiAccountAffinity, maxAccountRotations, openaiSessionAffinityTtlHours, rotationStrategy, maxWaitingPerKey, maxWaitingPerAccount, concurrencyWaitTimeoutSeconds, responsesMaxDecompressedBodyMiB, accountAutoFreezeThreshold, accountAutoFreezeWindowSeconds, accountAutoFreezeDurationSeconds } = form
     if (!openaiAccountAffinity || maxAccountRotations === null || openaiSessionAffinityTtlHours === null || refreshMarginSeconds === null || refreshConcurrency === null || maxConcurrentPerAccount === null || openaiGuardianReservedConcurrency === null || !rotationStrategy || maxWaitingPerKey === null || maxWaitingPerAccount === null || concurrencyWaitTimeoutSeconds === null) {
@@ -341,6 +364,8 @@ export function useSettingsForm() {
   return {
     loading,
     saving,
+    detectingLocation,
+    detectLocation,
     hasChanges,
     resetSettings,
     error,

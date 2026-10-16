@@ -276,6 +276,10 @@ where
         .route("/api/admin/settings/pricing/sync", post(sync_pricing::<S>))
         .route("/api/admin/settings", get(settings::<S>))
         .route(
+            "/api/admin/settings/location/detect",
+            post(detect_location::<S>),
+        )
+        .route(
             "/api/admin/settings/client-profiles/{provider}",
             get(client_profile_options::<S>),
         )
@@ -646,6 +650,25 @@ fn deserialize_profile_update<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<serde_json::Map<String, serde_json::Value>>, D::Error> {
     serde_json::Map::<String, serde_json::Value>::deserialize(deserializer).map(Some)
+}
+
+async fn detect_location<S>(
+    _auth: AdminAuth,
+    State(state): State<S>,
+) -> Result<impl IntoResponse, AdminError>
+where
+    S: SessionState + Send + Sync,
+{
+    let result = state
+        .admin_services()
+        .proxies()
+        .probe(None, true)
+        .await
+        .map_err(map_service_error)?;
+    Ok(AdminResponse::new(
+        StatusCode::OK,
+        AdminEnvelope::ok(result.location),
+    ))
 }
 
 async fn client_profile_options<S>(

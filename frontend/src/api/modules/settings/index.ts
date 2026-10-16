@@ -1,4 +1,5 @@
 import type { RequestOptions } from '../../request'
+import type { ProxyLocationDetection } from '../proxies'
 import type { CodexPrivacyPolicy } from './privacy'
 import type { ClientProfileSelection, ProviderRequestProfiles, ProviderRequestProfileUpdates, XaiClientProfileSelection } from './profiles'
 import request from '../../request'
@@ -13,6 +14,14 @@ export interface RequestLocation {
   region: string
   city: string
   timezone: string
+}
+
+export function detectRequestLocation() {
+  return request<ProxyLocationDetection>({
+    url: '/api/admin/settings/location/detect',
+    method: 'POST',
+    timeout: 25000,
+  })
 }
 
 export type AccountAffinity = 'relaxed' | 'preferred' | 'strict'

@@ -299,11 +299,15 @@ pub(super) struct SuccessfulProbe;
 
 #[async_trait]
 impl ProxyProbe for SuccessfulProbe {
-    async fn test(&self, proxy: &OutboundProxy, detect_location: bool) -> ProxyTestResult {
-        assert_eq!(
-            proxy.expose_url(),
-            "http://test-user:private-password@proxy.example:8080/"
-        );
+    async fn test(&self, proxy: Option<&OutboundProxy>, detect_location: bool) -> ProxyTestResult {
+        if let Some(proxy) = proxy {
+            assert_eq!(
+                proxy.expose_url(),
+                "http://test-user:private-password@proxy.example:8080/"
+            );
+        } else {
+            assert!(detect_location);
+        }
         ProxyTestResult {
             location: if detect_location {
                 ProxyLocationDetection::Detected { location: serde_json::from_value(json!({"country":"JP","region":"Tokyo","city":"Tokyo","timezone":"Asia/Tokyo"})).unwrap() }

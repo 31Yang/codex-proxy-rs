@@ -480,7 +480,7 @@ where
     let result = state
         .admin_services()
         .proxies()
-        .probe(&proxy, request.detect_location)
+        .probe(Some(&proxy), request.detect_location)
         .await
         .map_err(map_error)?;
     Ok(AdminResponse::new(

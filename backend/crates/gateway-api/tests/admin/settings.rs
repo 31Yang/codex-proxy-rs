@@ -79,6 +79,53 @@ fn update_body() -> Value {
 }
 
 #[tokio::test]
+async fn location_detection_requires_auth_and_leaves_saved_settings_unchanged() {
+    let fixture = AdminTestFixture::new().await;
+    let response = app(fixture.state())
+        .oneshot(request(
+            Method::POST,
+            "/api/admin/settings/location/detect",
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+    fixture.auth.insert_session("valid-session");
+    let before = response_json(
+        app(fixture.state())
+            .oneshot(request(Method::GET, "/api/admin/settings", None))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let response = app(fixture.state())
+        .oneshot(request(
+            Method::POST,
+            "/api/admin/settings/location/detect",
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response_json(response).await["data"],
+        json!({
+            "status": "detected",
+            "location": {"country": "JP", "region": "Tokyo", "city": "Tokyo", "timezone": "Asia/Tokyo"}
+        })
+    );
+    let after = response_json(
+        app(fixture.state())
+            .oneshot(request(Method::GET, "/api/admin/settings", None))
+            .await
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(before, after);
+}
+
+#[tokio::test]
 async fn privacy_save_requires_provider_validation_and_preview_requires_admin_auth() {
     let fixture = AdminTestFixture::new().await;
     fixture.auth.insert_session("valid-session");

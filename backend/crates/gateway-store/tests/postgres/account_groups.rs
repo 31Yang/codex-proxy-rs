@@ -62,6 +62,11 @@ async fn groups_aggregate_cross_provider_members_and_key_bindings_without_multip
     let Some(database) = TestDatabase::create("account_group_aggregate").await else {
         return;
     };
+    // 显式固定继承上限，让分组聚合断言不依赖安装时的初始设置
+    sqlx::query("update runtime_settings set max_concurrent_per_account = 3 where id = 1")
+        .execute(&database.pool)
+        .await
+        .expect("set inherited account concurrency");
     seed_account(
         &database.pool,
         "acct_group_openai",

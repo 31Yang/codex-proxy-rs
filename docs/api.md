@@ -1867,6 +1867,7 @@ errorCode, errorMessage, startedAt, completedAt, expiresAt, createdAt, updatedAt
 | `GET` | `/api/admin/usage/insights/overview` | 用量、成本与成功率洞察 |
 | `GET` | `/api/admin/usage/insights/diagnostics` | 按维度聚合诊断 |
 | `GET` | `/api/admin/operations/errors` | 运维错误分页列表 |
+| `GET` | `/api/admin/diagnostics/export` | 按 `requestId` 或 `errorId` 下载诊断 JSON 附件 |
 
 ### Dashboard 容量与账号用量
 
@@ -1919,7 +1920,8 @@ request/response/upstream ID、outcome 与搜索文本。`search` 仅供明细�
 标记来源链截断；存在附属清理失败时，`causes.cleanup` 保存各自的原因快照。
 `upstream` 保存上游正文，`redacted` 标记令牌等敏感上下文的移除；没有对应来源时为 `null`。
 稳定错误分类、原始上游 code 和该详情分别保留，不以公共错误文案代替原始原因。
-详情不出现在 Key 用量接口、普通错误信封和诊断包导出中；记录仍受异步观测写入与保留周期约束
+详情不出现在 Key 用量接口和普通错误信封中；[诊断导出](#诊断与恢复关联)在服务端重新脱敏后包含已存详情。
+记录仍受异步观测写入与保留周期约束
 
 管理端请求列表与详情分别保留 `requestedModel`（客户端请求）、`upstreamModel`（网关发送）与
 `upstreamResponseModel`（上游返回）。返回模型缺失时为 `null`，不使用请求或映射模型补齐。

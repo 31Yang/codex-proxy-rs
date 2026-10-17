@@ -152,7 +152,7 @@ watch(search, () => {
               {{ row.lastTestAtDisplay ?? '-' }}
             </template>
             <template #actions="{ row }">
-              <ProxyActions :proxy="row" :testing="testingIds.has(row.id)" :updating="updatingIds.has(row.id)" @test="checkProxy" @edit="openForm" @toggle="toggleEnabled" @delete="requestDelete" />
+              <ProxyActions :proxy="row" :testing="testingIds.has(row.id)" :batch-testing="batchTesting" :updating="updatingIds.has(row.id)" @test="checkProxy" @edit="openForm" @toggle="toggleEnabled" @delete="requestDelete" />
             </template>
           </ZTable>
           <ZPagination v-bind="pagination" :disabled="loading" @current-change="setPage" @size-change="setPageSize" />

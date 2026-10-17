@@ -2,17 +2,19 @@
 import type { Account } from '@/api'
 import { ZDialog, ZIconButton, ZPagination } from '@codex-proxy/ui'
 import { Grid2X2, RefreshCw } from '@lucide/vue'
-import { toRef } from 'vue'
+import { computed, toRef } from 'vue'
 import { useAccountConcurrency } from '../composables/useAccountConcurrency'
+import { accountIdentityLabel } from '../utils/accountIdentity'
 import AccountConcurrencyTable from './AccountConcurrencyTable.vue'
 
 const props = defineProps<{ account: Account | null }>()
 const open = defineModel<boolean>({ required: true })
+const accountLabel = computed(() => props.account ? accountIdentityLabel(props.account) : '当前账号')
 const { pageSize, data, entries, loading, tableLoading, error, refresh, setPage, setPageSize } = useAccountConcurrency(toRef(props, 'account'), open)
 </script>
 
 <template>
-  <ZDialog v-model="open" title="并发明细" :description="`${account?.name ?? '当前账号'} · 当前正在处理的请求`" width="72rem">
+  <ZDialog v-model="open" title="并发明细" :description="`${accountLabel} · 当前正在处理的请求`" width="72rem">
     <div class="grid min-w-0 gap-2">
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-1.5 text-cp-sm" role="group" aria-label="当前占用 / 并发上限">

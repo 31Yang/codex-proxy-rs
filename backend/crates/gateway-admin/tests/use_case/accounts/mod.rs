@@ -734,6 +734,16 @@ impl FakeAccountStore {
 
 #[async_trait]
 impl AccountStore for FakeAccountStore {
+    async fn account_exists(&self, account_id: &str) -> AdminStoreResult<bool> {
+        self.record("store.account_exists");
+        Ok(self
+            .accounts
+            .lock()
+            .expect("accounts")
+            .iter()
+            .any(|account| account.id == account_id))
+    }
+
     async fn list_plugin_accounts(
         &self,
         _: gateway_admin::model::provider_credentials::PluginAccountListQuery,
@@ -3616,6 +3626,19 @@ struct CapacityRuntime {
 
 #[async_trait]
 impl AccountRuntimeStore for CapacityRuntime {
+    async fn account_concurrency(
+        &self,
+        _: &str,
+        _: u64,
+        _: u32,
+    ) -> AdminStoreResult<gateway_admin::model::accounts::AccountConcurrencyPage> {
+        Err(gateway_admin::ports::store::AdminStoreError::new(
+            gateway_admin::ports::store::AdminStoreErrorKind::Unavailable,
+            "account concurrency",
+            "not configured in this fixture",
+        ))
+    }
+
     async fn active_rate_limits(&self) -> AdminStoreResult<AccountRuntimeSnapshot> {
         Ok(AccountRuntimeSnapshot::default())
     }

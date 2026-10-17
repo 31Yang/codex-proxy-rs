@@ -54,6 +54,13 @@ const CONNECTION_TEST_INPUT: &str = "Reply with exactly OK.";
 /// 统一账号页消费的服务
 #[async_trait]
 pub trait AccountsService: Send + Sync {
+    async fn concurrency(
+        &self,
+        account_id: ProviderAccountId,
+        page: u32,
+        page_size: u32,
+    ) -> Result<crate::model::accounts::AccountConcurrencyPage, AdminError>;
+
     async fn list(&self, query: AccountListQuery) -> Result<AccountDirectoryPage, AdminError>;
 
     async fn export(
@@ -412,6 +419,31 @@ impl DefaultAccountsService {
 
 #[async_trait]
 impl AccountsService for DefaultAccountsService {
+    async fn concurrency(
+        &self,
+        account_id: ProviderAccountId,
+        page: u32,
+        page_size: u32,
+    ) -> Result<crate::model::accounts::AccountConcurrencyPage, AdminError> {
+        let offset = page
+            .checked_sub(1)
+            .and_then(|page| page.checked_mul(page_size))
+            .filter(|_| (1..=100).contains(&page_size))
+            .ok_or_else(|| AdminError::invalid("并发明细分页参数无效"))?;
+        if !self
+            .accounts
+            .account_exists(account_id.as_str())
+            .await
+            .map_err(|error| map_store_error(error, "account concurrency"))?
+        {
+            return Err(AdminError::not_found("账号不存在"));
+        }
+        self.account_runtime
+            .account_concurrency(account_id.as_str(), u64::from(offset), page_size)
+            .await
+            .map_err(|error| map_store_error(error, "account concurrency"))
+    }
+
     async fn list(&self, query: AccountListQuery) -> Result<AccountDirectoryPage, AdminError> {
         let providers = &self.providers;
         let runtime = self

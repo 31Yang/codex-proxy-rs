@@ -59,7 +59,7 @@ export interface KeyUsageOverview {
   healthTimeline: DashboardHealthTimeline
 }
 
-export type KeyUsageRecordKind = 'success' | 'error'
+export type KeyUsageRecordKind = 'success' | 'error' | 'all'
 
 export interface KeyUsageRecord {
   id: string
@@ -77,7 +77,7 @@ export interface KeyUsageRecord {
   latencyDetails: Pick<UsageLatencyDetails, 'firstEventMs' | 'firstReasoningMs' | 'firstTextMs'>
   clientIp: string | null
   userAgent: string | null
-  status: KeyUsageRecordKind
+  status: 'success' | 'error' | 'incomplete' | 'cancelled' | 'running' | 'unknown'
   statusCode: number | null
 }
 

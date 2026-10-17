@@ -85,6 +85,8 @@ export type UsageRecordStatus = 'success' | 'error' | 'all'
 
 export interface UsageListRecord {
   logicalOutcome: string
+  errorCode: string | null
+  errorMessage: string | null
   clientApiKeyName: string | null
   id: string
   provider: string | null

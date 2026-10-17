@@ -801,6 +801,9 @@ async fn usage_route_should_expose_table_facts_without_detail_payload() {
         .lock()
         .expect("usage records")
         .push(UsageListRecord {
+            error_code: None,
+            error_message: None,
+            client_status_code: None,
             outcome: gateway_admin::model::observability::RequestOutcome::Succeeded,
             client_api_key_name: Some("Production".to_owned()),
             id: "request_endpoint".to_owned(),
@@ -892,12 +895,18 @@ async fn usage_route_should_expose_table_facts_without_detail_payload() {
             });
             records.push(image);
         }
+        let mut failed = records[0].clone();
+        failed.id = "request_failed".to_owned();
+        failed.outcome = gateway_admin::model::observability::RequestOutcome::Failed;
+        failed.error_code = Some("server_error".to_owned());
+        failed.error_message = Some("The upstream service is temporarily unavailable.".to_owned());
+        records.push(failed);
     }
     let response = observability::router::<AdminTestState>()
         .with_state(fixture.state())
         .oneshot(
             Request::builder()
-                .uri("/api/admin/usage/records")
+                .uri("/api/admin/usage/records?status=all")
                 .header(header::COOKIE, "cpr_session=valid-session")
                 .header("x-request-id", "req_usage_endpoint")
                 .body(Body::empty())
@@ -911,6 +920,13 @@ async fn usage_route_should_expose_table_facts_without_detail_payload() {
         .expect("usage response body");
     let value: serde_json::Value = serde_json::from_slice(&body).expect("usage response JSON");
 
+    assert!(value["data"]["items"][0]["errorCode"].is_null());
+    assert!(value["data"]["items"][0]["errorMessage"].is_null());
+    assert_eq!(value["data"]["items"][3]["errorCode"], "server_error");
+    assert_eq!(
+        value["data"]["items"][3]["errorMessage"],
+        "The upstream service is temporarily unavailable."
+    );
     assert_eq!(value["data"]["items"][0]["clientApiKeyName"], "Production");
     assert_eq!(value["data"]["items"][0]["accountNotes"], "Team workspace");
     assert_eq!(

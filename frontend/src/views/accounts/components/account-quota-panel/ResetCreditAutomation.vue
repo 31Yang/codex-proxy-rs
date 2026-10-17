@@ -88,7 +88,7 @@ watch(() => props.accountId, () => {
       <div class="flex items-center gap-3">
         <ZButton size="small" variant="text" aria-label="设置全局提前时间" @click="router.push('/settings#reset-credits')">
           <template #icon>
-            <Clock3 class="size-3.5 -translate-y-px" />
+            <Clock3 class="size-3.5" />
           </template>
           {{ status ? `提前 ${status.leadMinutes} 分钟` : '提前时间' }}
         </ZButton>

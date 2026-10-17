@@ -1109,9 +1109,9 @@ PostgreSQL 备份恢复属于人工维护操作。当前没有部署级维护模
 后端验证从 `backend/Cargo.toml` 执行，仓库根目录没有 Cargo manifest：
 
 ```bash
-cargo +1.97.0 fmt --all --manifest-path backend/Cargo.toml -- --check
-RUST_MIN_STACK=16777216 cargo +1.97.0 clippy --manifest-path backend/Cargo.toml --all-targets --all-features --locked -- -D warnings
-RUST_MIN_STACK=16777216 cargo +1.97.0 test --manifest-path backend/Cargo.toml --test main --locked
+cargo +1.99.1 fmt --all --manifest-path backend/Cargo.toml -- --check
+RUST_MIN_STACK=16777216 cargo +1.99.1 clippy --manifest-path backend/Cargo.toml --all-targets --all-features --locked -- -D warnings
+RUST_MIN_STACK=16777216 cargo +1.99.1 test --manifest-path backend/Cargo.toml --test main --locked
 ```
 
 线程栈设置与当前 CI 一致。PostgreSQL/Redis 集成测试需按

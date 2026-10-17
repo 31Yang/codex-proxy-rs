@@ -105,11 +105,12 @@ sequenceDiagram
 
 ## 本地验证
 
-设置服务的 SDK 类型和操作由宿主领域类型及[操作声明](../../gateway-admin/src/public_service/settings.rs)生成，SDK 构建不依赖宿主源码。
+设置与账号自动重置服务的 SDK 类型和操作由宿主领域类型及[操作声明](../../gateway-admin/src/public_service)生成，SDK 构建不依赖宿主源码。
 修改宿主合同后，在仓库根目录更新生成文件；Admin 合同测试会检查生成结果是否同步：
 
 ```bash
 CPR_UPDATE_SERVICE_CONTRACT=1 RUST_MIN_STACK=16777216 cargo +1.97.0 test --manifest-path backend/Cargo.toml -p gateway-admin --test main sdk_settings_contract_matches_host_declarations --locked
+CPR_UPDATE_SERVICE_CONTRACT=1 RUST_MIN_STACK=16777216 cargo +1.97.0 test --manifest-path backend/Cargo.toml -p gateway-admin --test main sdk_accounts_contract_matches_host_declarations --locked
 cargo +1.97.0 fmt --all --manifest-path backend/Cargo.toml
 ```
 

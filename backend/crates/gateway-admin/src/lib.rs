@@ -421,7 +421,7 @@ async fn initialize_inner(
     auth.ensure_default_admin(config.default_password.expose())
         .await?;
 
-    let accounts = Arc::new(DefaultAccountsService::new(
+    let accounts = initialize_accounts(
         store.accounts(),
         store.account_runtime(),
         store.settings(),
@@ -429,7 +429,7 @@ async fn initialize_inner(
         registry.clone(),
         snapshot.clone(),
         probe.clone(),
-    ));
+    );
     let backup_ports = store.backup();
     let backups = Arc::new(DefaultBackupService::new(
         backup_ports.repository(),
@@ -480,6 +480,7 @@ async fn initialize_inner(
     let usage_data = initialize_usage_data(store.usage_data(), store.settings(), registry.clone());
     let mut public_services = public_service::Registry::new(service_middleware);
     public_services.register_settings(&settings)?;
+    public_services.register_accounts(&accounts)?;
     public_services.register_usage_data(&usage_data)?;
     let services = AdminServices {
         timezone,
@@ -669,6 +670,28 @@ fn freeze_recovery_worker_contribution(
     )
     .map_err(|_| AdminError::internal("冻结恢复 Worker 注册信息不合法"))?;
     Ok(vec![WorkerContribution::Registration(registration)])
+}
+
+/// 服务端与 CLI 复用账号用例，不随命令启动后台调度
+#[must_use]
+pub fn initialize_accounts(
+    accounts: Arc<dyn ports::store::AccountStore>,
+    account_runtime: Arc<dyn ports::store::AccountRuntimeStore>,
+    settings: Arc<dyn ports::store::SettingsStore>,
+    timezone: gateway_core::time::DeploymentTimeZone,
+    providers: ProviderAdminRegistry,
+    snapshot: Arc<dyn SnapshotControl>,
+    probe: Arc<dyn AccountProbe>,
+) -> Arc<dyn AccountsService> {
+    Arc::new(DefaultAccountsService::new(
+        accounts,
+        account_runtime,
+        settings,
+        timezone,
+        providers,
+        snapshot,
+        probe,
+    ))
 }
 
 /// 设置服务不依赖 Web 管理会话，CLI 与服务器通过同一用例执行事务和发布

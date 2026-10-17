@@ -260,7 +260,7 @@ HTTP 总入口统一包裹原生路由，`dispatch_http` 复用同一路由与�
 返回 `ServiceResponse::from_result::<O>(result)` 可以改写结果、短路或恢复业务错误；
 不感兴趣的操作调用 `forward()`。公开值完整传递，类型校验不承担字段权限控制
 
-当前登记 `settings` 的 11 个操作：`Load`、`Replace`、`ApiKeyExists`、`RegenerateApiKey`、`DeleteApiKey`、
+`settings` 提供 `Load`、`PreviewPrivacyPolicy`、`Replace`、`ApiKeyExists`、`RegenerateApiKey`、`DeleteApiKey`、
 `Pricing`、`PreviewPricingSync`、`Sync`、`Update`、`ClientProfileOptions`、`PreviewClientProfile`。
 插件回调和 CLI 经注册表主动调用时统一进入一次 `service` 组合；网关原生设置接口由 HTTP 总入口包裹。
 各入口共用同一业务实现，业务方法内部调用不重复进入 `service` 组合。
@@ -269,6 +269,19 @@ HTTP 总入口统一包裹原生路由，`dispatch_http` 复用同一路由与�
 `Load` 返回完整运行设置与 `config_revision`。`ReplaceRuntimeSettings::from(settings)` 保留该版本并构造更新命令；
 `Replace` 接收 `(MutationContext, ReplaceRuntimeSettings)`，通过已有校验、事务、审计和快照发布保存设置。
 版本过期返回 `ServiceError { kind: "conflict", message }`。读取结果的普通改写不会持久化，也不会回滚已经提交的事务
+
+`accounts::GetResetCreditAutomation` 接收账号 ID，返回 `ResetCreditAutomationStatus`：开关、全局提前分钟数、
+下次发现与使用时间、最近结果；时间为 RFC 3339 字符串，无计划时为 `None`。
+`accounts::SetResetCreditAutomation` 接收 `(account_id, enabled)`，返回保存后的同一状态；审计主体与调用标识由宿主提供。
+两者复用原生账号校验和自动重置用例，不立即查询或消费上游卡片。提前时间通过 `settings::Load` / `Replace` 的
+`reset_credit_lead_minutes` 读取和设置，范围见[主动额度重置卡](../../../../../docs/api.md#主动额度重置卡)
+
+```rust,ignore
+use gateway_plugin_sdk::call::services::accounts::{GetResetCreditAutomation, SetResetCreditAutomation};
+
+let status = host.service::<GetResetCreditAutomation>(account_id.clone()).await?;
+let status = host.service::<SetResetCreditAutomation>((account_id, true)).await?;
+```
 
 服务错误保留分类与完整业务文案，子调用继承冻结发布计划及取消信号。
 插件显式再次调用服务时继承发起实例链并跳过相同实例，防止无限递归；无 service 绑定时直接分派业务实现，仍保留空计划快照、父子关联和取消信号。

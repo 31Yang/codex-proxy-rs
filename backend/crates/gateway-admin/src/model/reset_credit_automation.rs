@@ -35,7 +35,7 @@ pub struct ResetCreditAutomation {
     pub state: ResetCreditAutomationState,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResetCreditAutomationStatus {
     pub enabled: bool,
     pub lead_minutes: u32,

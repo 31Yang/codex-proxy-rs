@@ -3742,7 +3742,7 @@ impl gateway_admin::ports::reset_credit_automation::ResetCreditAutomationStore
     async fn save_reset_credit_automation(
         &self,
         record: &gateway_admin::model::reset_credit_automation::ResetCreditAutomation,
-        _: Option<&MutationContext>,
+        context: Option<&MutationContext>,
     ) -> AdminStoreResult<u64> {
         let mut records = self.automations.lock().unwrap();
         if records.get(&record.account_id).map_or(0, |r| r.revision) != record.revision {
@@ -3756,6 +3756,9 @@ impl gateway_admin::ports::reset_credit_automation::ResetCreditAutomationStore
         next.revision += 1;
         let revision = next.revision;
         records.insert(next.account_id.clone(), next);
+        if let Some(context) = context {
+            self.record_context(context);
+        }
         Ok(revision)
     }
 }

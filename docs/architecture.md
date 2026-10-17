@@ -178,6 +178,7 @@ flowchart LR
 - **主动服务调用在注册表统一组合**：Admin 按类型登记操作，Core 组合器只负责续体，Runtime 搬运跨进程调用。
   插件与 CLI 主动调用公开服务时进入 `service` 中间件一次；原生 HTTP 接口由总入口包裹，业务方法及其内部调用不重复组合。
   主动子调用继承冻结计划、父子关联和取消信号，无 service 绑定时也保留空计划快照；调用结束回收资源。
+  需要可信主体的写入在发起时冻结身份；跨任务执行 `next` 时仍使用发起者身份，不能继承转发者的主体。
   各入口复用原用例，运行设置的整体替换仍使用读取版本做事务内比较，冲突不写入。公开范围见 [SDK 服务合同](../backend/crates/gateway-plugin/sdk/docs/capabilities.md#公开服务)
 - **上游适配器是洋葱链终端**：`upstream_adapter` 只扩展内置 OpenAI / xAI，沿原 Provider 的选号、租约及 attempt 中间件进入冷流。
   Provider 解释凭据、恢复账号状态和计算价格；Runtime 绑定账号版本并解析标准事件，Host 负责真实出站。

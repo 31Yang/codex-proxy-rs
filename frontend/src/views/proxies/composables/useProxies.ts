@@ -1,11 +1,15 @@
 import type { OutboundProxyRecord, OutboundProxyTest } from '@/api'
+import type { RequestOptions } from '@/api/request'
 import { ZNotification } from '@codex-proxy/ui'
 import { computed, onMounted, reactive, shallowRef, watch } from 'vue'
 import { createProxy, deleteProxy, getProxies, probeProxy, testProxy, updateProxy } from '@/api'
+import { ApiError } from '@/api/request'
 import { useAsyncAction } from '@/composables/useAsyncAction'
 import { useIdSet } from '@/composables/useIdSet'
 import { usePagedQuery } from '@/composables/usePagedQuery'
 import { normalizeRequestLocation, requestLocationError } from '@/utils/location'
+import { errorMessage } from '@/utils/operation'
+import { proxyResultData } from '../utils/batch'
 
 export function useProxies() {
   const search = shallowRef('')
@@ -53,16 +57,38 @@ export function useProxies() {
     showForm.value = true
   }
 
+  async function testSavedProxies(targets: OutboundProxyRecord[], options: RequestOptions = {}, detectLocation = false) {
+    if (targets.some(proxy => testing.has(proxy.id)))
+      throw new ApiError('代理正在测试，请等待当前测试结束', 429)
+    for (const proxy of targets)
+      testing.add(proxy.id)
+    try {
+      const results = await testProxy(targets.map(proxy => ({ id: proxy.id, revision: proxy.revision, detectLocation })), options)
+      for (const [index, result] of results.entries()) {
+        const target = targets[index]
+        if (result.status !== 'succeeded' || !target)
+          continue
+        const record = result.data
+        // 列表或编辑目标已换版本时，迟到的测试不能覆盖新配置
+        proxies.value = proxies.value.map(item => item.id === record.id && item.revision === target.revision ? record : item)
+        if (editing.value?.id === record.id && editing.value.revision === target.revision) {
+          editing.value = record
+          formTestResult.value = record.lastTest
+        }
+      }
+      return results
+    }
+    finally {
+      for (const proxy of targets)
+        testing.remove(proxy.id)
+    }
+  }
+
   async function checkProxy(proxy: OutboundProxyRecord) {
     if (testing.has(proxy.id))
       return
-    testing.add(proxy.id)
     try {
-      const result = await testProxy({ id: proxy.id, revision: proxy.revision })
-      if (editing.value?.id === result.id) {
-        editing.value = result
-        formTestResult.value = result.lastTest
-      }
+      const result = proxyResultData((await testSavedProxies([proxy]))[0])
       if (result.lastTest?.success === false)
         ZNotification.error({ message: `${result.name}：${result.lastTest.message}` })
       else if (result.lastTest?.success)
@@ -70,9 +96,11 @@ export function useProxies() {
       else
         ZNotification.error({ message: result.lastTest?.message ?? '代理测试失败' })
     }
-    catch {}
+    catch (error) {
+      if (!(error instanceof ApiError))
+        ZNotification.error({ message: errorMessage(error, '代理测试失败') })
+    }
     finally {
-      testing.remove(proxy.id)
       await query.execute({ silent: true })
     }
   }
@@ -118,7 +146,7 @@ export function useProxies() {
         }
         else {
           const proxy = editing.value!
-          const updated = await testProxy({ id: proxy.id, revision: proxy.revision, detectLocation: true })
+          const updated = proxyResultData((await testProxy([{ id: proxy.id, revision: proxy.revision, detectLocation: true }]))[0])
           editing.value = updated
           result = updated.lastTest
           await query.execute({ silent: true })
@@ -175,18 +203,22 @@ export function useProxies() {
             proxyUrl: proxyUrl || undefined,
             location,
           })
-        : createProxy({
+        : createProxy([{
             name,
             autoLocation: false,
             proxyUrl,
             location,
-          }))
+          }]).then(results => proxyResultData(results[0])))
       showForm.value = false
       ZNotification.success({ message: '代理已保存' })
-      search.value = ''
-      query.page.value = 1
-      await query.execute()
+      await reloadAfterCreate()
     })
+  }
+
+  async function reloadAfterCreate() {
+    search.value = ''
+    query.page.value = 1
+    await query.execute()
   }
 
   function requestDelete(proxy: OutboundProxyRecord) {
@@ -269,6 +301,7 @@ export function useProxies() {
     loading,
     pagination,
     loadProxies: query.execute,
+    reloadAfterCreate,
     showForm,
     editing,
     form,
@@ -288,6 +321,7 @@ export function useProxies() {
     detectingLocation,
     openForm,
     checkProxy,
+    testSavedProxies,
     testConnection,
     detectLocation,
     save,

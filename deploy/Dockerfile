@@ -4,7 +4,7 @@
 # 版本严格一致。升级数据库版本时只需同步修改这里与 deploy/compose.yaml。
 ARG POSTGRES_IMAGE=postgres:18-bookworm@sha256:d9c83446333daec3f0588cc709adb80c26090b7f9f0f7ec8d43c243385d79818
 
-FROM node:26-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567 AS frontend-builder
+FROM node:24-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS frontend-builder
 
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
@@ -13,7 +13,7 @@ RUN npm install --global "$(node -p 'require("./package.json").packageManager')"
 COPY frontend ./
 RUN pnpm build
 
-FROM rust:1.98-bookworm@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e AS backend-builder
+FROM rust:1.97-bookworm@sha256:77fac8b98f9f46062bb680b6d25d5bcaabfc400143952ebc572e924bcbedc3fa AS backend-builder
 
 WORKDIR /app/backend
 ARG TARGETARCH

@@ -281,8 +281,8 @@ HTTP 总入口统一包裹原生路由，`dispatch_http` 复用同一路由与�
 `accounts::GetResetCreditAutomation` 接收账号 ID，返回 `ResetCreditAutomationStatus`：开关、全局提前分钟数、
 下次发现与使用时间、最近结果；时间为 RFC 3339 字符串，无计划时为 `None`。
 `accounts::SetResetCreditAutomation` 接收 `(account_id, enabled)`，返回保存后的同一状态；审计主体与调用标识由宿主提供。
-两者复用原生账号校验和自动重置用例，不立即查询或消费上游卡片。提前时间通过 `settings::Load` / `Replace` 的
-`reset_credit_lead_minutes` 读取和设置，范围见[主动额度重置卡](../../../../../docs/api.md#主动额度重置卡)
+两者复用原生账号校验和自动重置用例，不立即查询或消费上游卡片。提前时间与剩余周额度上限通过 `settings::Load` / `Replace` 的
+`reset_credit_lead_minutes` 和可选的 `reset_credit_max_weekly_remaining_percent` 读取和设置，范围见[主动额度重置卡](../../../../../docs/api.md#主动额度重置卡)
 
 ```rust,ignore
 use gateway_plugin_sdk::call::services::accounts::{GetResetCreditAutomation, SetResetCreditAutomation};

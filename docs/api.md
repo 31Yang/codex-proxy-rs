@@ -1283,6 +1283,10 @@ revision 变化时丢弃结果
 GET 和 POST 均返回 `enabled`、`leadMinutes`、`nextDiscoveryAtDisplay`、`nextConsumeAtDisplay`、`lastResult`，
 时间展示沿用部署时区，无计划时为 `null`。运行设置 `resetCreditLeadMinutes` 默认 10，范围 1～1440 分钟
 
+`resetCreditMaxWeeklyRemainingPercent` 是可选的全局剩余周额度上限，范围 0～100 的整数，默认 `null` 表示不限制。
+设置后，每次新的自动消费前刷新账号周额度；剩余比例大于上限或无法确认周额度时，保留卡片并在到期前错峰重查，
+等于上限时允许使用。仅采用账号级周窗口，不回退到短期、月度或模型专属额度；手动使用不受此上限影响
+
 开启后在一分钟内错峰执行首次发现，此后按部署时区每天随机发现一次，普通发现失败也等待下一日。
 已知且有明确到期时间的可用卡片在提前窗口内错峰执行，消费前重新查询；已在其他地方使用或已到期的卡片
 会移出计划，查询失败不直接消费。上游返回 `already_redeemed` 后结束该次操作，不切换另一张卡重试。
@@ -1290,7 +1294,10 @@ GET 和 POST 均返回 `enabled`、`leadMinutes`、`nextDiscoveryAtDisplay`、`n
 
 `lastResult` 的 `pending` 表示消费结果待确认；重试沿用已持久化的幂等键，重启或关闭再开启也不换键。
 `expired_unknown` 表示未确认操作的卡片已经到期，停止重试；`reset`、`already_redeemed` 表示对应终态，
-`discovery_failed` 表示最近查询失败，`not_redeemed` 表示上游明确未完成消费。自动操作未决且对应卡片尚未到期时，手动消费返回 `409`
+`discovery_failed` 表示最近查询失败，`not_redeemed` 表示上游明确未完成消费。
+`weekly_quota_above_threshold` 表示剩余周额度高于上限，`weekly_quota_unavailable` 表示暂时无法确认周额度；
+`nothing_to_reset` 表示当前没有可重置窗口，这三种状态均保留卡片并稍后重查，其中 `nothing_to_reset` 的下一次消费使用新幂等键。
+结果未知的未决操作继续使用原幂等键确认，不重新应用周额度上限；自动操作未决且对应卡片尚未到期时，手动消费返回 `409`
 
 ## 6. 账号分组
 
@@ -1473,7 +1480,7 @@ HTTP 返回 `429`，`error.code` 为 `key_daily_budget_exceeded` 或 `key_weekly
 | [历史保留](#历史保留) | `usageRetentionDays`、`opsEventRetentionDays`、`auditRetentionDays` |
 | [账号自动冻结](#账号自动冻结) | `accountAutoFreezeEnabled`、`accountAutoFreezeThreshold`、`accountAutoFreezeWindowSeconds`、`accountAutoFreezeDurationSeconds`、`accountAutoFreezeProbeEnabled`、`accountAutoFreezeProbeModel`、`accountAutoFreezeAdaptiveConcurrency` |
 | [账号预热](#账号预热) | `accountWarmupEnabled`、`accountWarmupScheduleTime`、`accountWarmupModel` |
-| [主动额度重置卡](#主动额度重置卡) | `resetCreditLeadMinutes` |
+| [主动额度重置卡](#主动额度重置卡) | `resetCreditLeadMinutes`、`resetCreditMaxWeeklyRemainingPercent` |
 
 ### 历史保留
 

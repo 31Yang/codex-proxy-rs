@@ -75,7 +75,8 @@ fn update_body() -> Value {
         "accountWarmupEnabled": false,
         "accountWarmupScheduleTime": "08:00",
         "accountWarmupModel": null,
-        "resetCreditLeadMinutes": 10
+        "resetCreditLeadMinutes": 10,
+        "resetCreditMaxWeeklyRemainingPercent": null
     })
 }
 
@@ -410,6 +411,7 @@ fn settings_response_should_cover_the_full_runtime_settings_contract() {
             account_warmup_schedule_time: "08:00".to_owned(),
             account_warmup_model: None,
             reset_credit_lead_minutes: 10,
+            reset_credit_max_weekly_remaining_percent: None,
         },
     };
 
@@ -462,6 +464,7 @@ fn settings_response_should_cover_the_full_runtime_settings_contract() {
                 "accountWarmupScheduleTime": "08:00",
                 "accountWarmupModel": null,
                 "resetCreditLeadMinutes": 10,
+                "resetCreditMaxWeeklyRemainingPercent": null,
                 "updatedAt": "2026-08-02T10:30:00Z",
                 "updatedAtDisplay": "2026-08-02 18:30:00"
         })
@@ -539,6 +542,7 @@ fn settings_request_and_response_fields_should_stay_in_lockstep() {
             account_warmup_schedule_time: "08:00".to_owned(),
             account_warmup_model: None,
             reset_credit_lead_minutes: 10,
+            reset_credit_max_weekly_remaining_percent: None,
         },
     };
 
@@ -1640,5 +1644,44 @@ fn reset_credit_lead_minutes_requires_an_integer_within_one_day() {
         } else {
             assert_eq!(result.unwrap_err().field(), "resetCreditLeadMinutes");
         }
+    }
+}
+
+#[test]
+fn reset_credit_weekly_threshold_accepts_unset_and_zero_to_one_hundred() {
+    let mut omitted = update_body();
+    omitted
+        .as_object_mut()
+        .unwrap()
+        .remove("resetCreditMaxWeeklyRemainingPercent");
+    let request: UpdateRuntimeSettingsRequest = serde_json::from_value(omitted).unwrap();
+    request.validate().unwrap();
+    assert!(
+        request
+            .values
+            .reset_credit_max_weekly_remaining_percent
+            .is_none()
+    );
+    for value in [json!(null), json!(0), json!(70), json!(100)] {
+        let mut body = update_body();
+        body["resetCreditMaxWeeklyRemainingPercent"] = value.clone();
+        let request: UpdateRuntimeSettingsRequest = serde_json::from_value(body).unwrap();
+        request.validate().unwrap();
+        assert_eq!(
+            serde_json::to_value(request.values.reset_credit_max_weekly_remaining_percent).unwrap(),
+            value
+        );
+    }
+    let mut body = update_body();
+    body["resetCreditMaxWeeklyRemainingPercent"] = json!(101);
+    let request: UpdateRuntimeSettingsRequest = serde_json::from_value(body).unwrap();
+    assert_eq!(
+        request.validate().unwrap_err().field(),
+        "resetCreditMaxWeeklyRemainingPercent"
+    );
+    for value in [json!(-1), json!(70.5), json!("70")] {
+        let mut body = update_body();
+        body["resetCreditMaxWeeklyRemainingPercent"] = value;
+        assert!(serde_json::from_value::<UpdateRuntimeSettingsRequest>(body).is_err());
     }
 }

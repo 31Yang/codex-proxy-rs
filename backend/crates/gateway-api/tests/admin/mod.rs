@@ -647,6 +647,7 @@ impl SettingsStore for MemorySettingsStore {
                 account_warmup_schedule_time: "08:00".to_owned(),
                 account_warmup_model: None,
                 reset_credit_lead_minutes: 10,
+                reset_credit_max_weekly_remaining_percent: None,
             },
         };
         *settings = updated.clone();
@@ -1826,6 +1827,7 @@ fn test_runtime_settings() -> RuntimeSettings {
             account_warmup_schedule_time: "08:00".to_owned(),
             account_warmup_model: None,
             reset_credit_lead_minutes: 10,
+            reset_credit_max_weekly_remaining_percent: None,
         },
     }
 }

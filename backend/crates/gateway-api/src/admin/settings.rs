@@ -67,6 +67,7 @@ pub struct RuntimeSettingsFields {
     pub account_warmup_schedule_time: String,
     pub account_warmup_model: Option<String>,
     pub reset_credit_lead_minutes: u32,
+    pub reset_credit_max_weekly_remaining_percent: Option<u32>,
 }
 
 /// 运行配置投影与设置页字段的聚合响应
@@ -787,6 +788,8 @@ impl RuntimeSettingsFields {
             account_warmup_schedule_time: self.account_warmup_schedule_time,
             account_warmup_model: self.account_warmup_model,
             reset_credit_lead_minutes: self.reset_credit_lead_minutes,
+            reset_credit_max_weekly_remaining_percent: self
+                .reset_credit_max_weekly_remaining_percent,
         };
         values.validate().map_err(settings_validation_error)?;
         Ok(values)
@@ -828,6 +831,8 @@ impl From<gateway_admin::model::settings::RuntimeSettingsValues> for RuntimeSett
             account_warmup_schedule_time: settings.account_warmup_schedule_time,
             account_warmup_model: settings.account_warmup_model,
             reset_credit_lead_minutes: settings.reset_credit_lead_minutes,
+            reset_credit_max_weekly_remaining_percent: settings
+                .reset_credit_max_weekly_remaining_percent,
         }
     }
 }
@@ -844,6 +849,7 @@ fn settings_validation_error(field: &'static str) -> WireValidationError {
         "account_warmup_enabled" => "accountWarmupEnabled",
         "account_warmup_model" => "accountWarmupModel",
         "reset_credit_lead_minutes" => "resetCreditLeadMinutes",
+        "reset_credit_max_weekly_remaining_percent" => "resetCreditMaxWeeklyRemainingPercent",
         "account_warmup_schedule_time" => "accountWarmupScheduleTime",
         "audit_retention_days" => "auditRetentionDays",
         "concurrency_wait_timeout_seconds" => "concurrencyWaitTimeoutSeconds",

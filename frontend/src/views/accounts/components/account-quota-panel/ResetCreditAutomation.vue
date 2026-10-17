@@ -21,6 +21,9 @@ const resultText = computed(() => {
     case 'pending': return status.value?.enabled ? '上次自动重置结果待确认，将继续核对' : '上次自动重置结果待确认'
     case 'expired_unknown': return '上次重置结果未能确认，卡片已到期'
     case 'discovery_failed': return '最近查询失败，将按计划重试'
+    case 'weekly_quota_above_threshold': return '剩余周额度高于上限，稍后检查'
+    case 'weekly_quota_unavailable': return '暂时无法确认周额度，稍后检查'
+    case 'nothing_to_reset': return '当前额度窗口不需要重置，稍后检查'
     case 'not_redeemed': return '上游未完成最近一次自动重置'
     default: return ''
   }

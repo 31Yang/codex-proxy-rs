@@ -63,6 +63,7 @@ fn runtime_settings(enabled: bool, probe_enabled: bool, adaptive: bool) -> Runti
             account_warmup_schedule_time: "08:00".to_owned(),
             account_warmup_model: None,
             reset_credit_lead_minutes: 10,
+            reset_credit_max_weekly_remaining_percent: None,
         },
     }
 }

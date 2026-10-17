@@ -159,7 +159,7 @@ pub(crate) async fn load_runtime_settings_from_pool(pool: &PgPool) -> StoreResul
                     account_auto_freeze_window_seconds, account_auto_freeze_duration_seconds,
                     account_auto_freeze_probe_enabled, account_auto_freeze_probe_model,
                     account_auto_freeze_adaptive_concurrency,
-                    account_warmup_enabled, account_warmup_schedule_time, account_warmup_model, reset_credit_lead_minutes
+                    account_warmup_enabled, account_warmup_schedule_time, account_warmup_model, reset_credit_lead_minutes, reset_credit_max_weekly_remaining_percent
              from runtime_settings where id = 1",
         )
     .fetch_optional(pool)
@@ -337,7 +337,7 @@ pub(crate) async fn load_runtime_settings_in_transaction(
                 account_auto_freeze_window_seconds, account_auto_freeze_duration_seconds,
                 account_auto_freeze_probe_enabled, account_auto_freeze_probe_model,
                 account_auto_freeze_adaptive_concurrency,
-                account_warmup_enabled, account_warmup_schedule_time, account_warmup_model, reset_credit_lead_minutes
+                account_warmup_enabled, account_warmup_schedule_time, account_warmup_model, reset_credit_lead_minutes, reset_credit_max_weekly_remaining_percent
          from runtime_settings where id = 1",
     )
     .fetch_optional(&mut **transaction)
@@ -356,12 +356,12 @@ pub(crate) async fn update_runtime_settings_in_transaction(
     update: &RuntimeSettingsUpdate,
 ) -> StoreResult<Revision> {
     update.validate()?;
-    let previous_lead: i32 = sqlx::query_scalar(
-        "select reset_credit_lead_minutes from runtime_settings where id = 1 for update",
+    let previous_reset_settings: (i32, Option<i32>) = sqlx::query_as(
+        "select reset_credit_lead_minutes, reset_credit_max_weekly_remaining_percent from runtime_settings where id = 1 for update",
     )
     .fetch_one(&mut **transaction)
     .await
-    .map_err(|source| postgres_unavailable("load reset-credit lead time", source))?;
+    .map_err(|source| postgres_unavailable("load reset-credit settings", source))?;
     let refresh_margin_seconds =
         i64::try_from(update.values.refresh_margin_seconds).map_err(|_| invalid_numeric())?;
     let request_profile_updates = update
@@ -419,6 +419,7 @@ pub(crate) async fn update_runtime_settings_in_transaction(
                      openai_session_affinity_ttl_hours = $33,
                      codex_privacy_policy_json = $34,
                      reset_credit_lead_minutes = $35,
+                     reset_credit_max_weekly_remaining_percent = $36,
 	                 updated_at = now()
 	             where id = 1
 	             returning config_revision",
@@ -469,6 +470,7 @@ pub(crate) async fn update_runtime_settings_in_transaction(
     .bind(i64::from(update.values.openai_session_affinity_ttl_hours))
     .bind(sqlx::types::Json(&update.values.codex_privacy_policy))
     .bind(i64::from(update.values.reset_credit_lead_minutes))
+    .bind(update.values.reset_credit_max_weekly_remaining_percent.map(i64::from))
     .fetch_optional(&mut **transaction)
     .await
     .map_err(|source| postgres_unavailable("update runtime settings in transaction", source))?
@@ -477,8 +479,14 @@ pub(crate) async fn update_runtime_settings_in_transaction(
         entity: "runtime settings",
         id: "1".to_owned(),
     })?;
-    // 提前量变化只唤醒本地计划重算，不触发账号全量上游查询
-    if i64::from(previous_lead) != i64::from(update.values.reset_credit_lead_minutes) {
+    // 自动使用配置变化只唤醒本地计划重算，不触发账号全量上游查询
+    if i64::from(previous_reset_settings.0) != i64::from(update.values.reset_credit_lead_minutes)
+        || previous_reset_settings.1.map(i64::from)
+            != update
+                .values
+                .reset_credit_max_weekly_remaining_percent
+                .map(i64::from)
+    {
         sqlx::query("update provider_accounts set reset_credit_next_run_at = least(reset_credit_next_run_at, now()), reset_credit_automation_json = jsonb_set(reset_credit_automation_json, '{revision}', to_jsonb((reset_credit_automation_json ->> 'revision')::bigint + 1)) where reset_credit_automation_json ->> 'enabled' = 'true' ")
             .execute(&mut **transaction).await
             .map_err(|source| postgres_unavailable("reschedule reset-credit automation", source))?;
@@ -566,6 +574,7 @@ struct RuntimeSettingsRow {
     account_warmup_schedule_time: String,
     account_warmup_model: Option<String>,
     reset_credit_lead_minutes: i32,
+    reset_credit_max_weekly_remaining_percent: Option<i32>,
 }
 
 fn runtime_settings_from_row(row: RuntimeSettingsRow) -> StoreResult<RuntimeSettings> {
@@ -634,6 +643,11 @@ fn runtime_settings_from_row(row: RuntimeSettingsRow) -> StoreResult<RuntimeSett
             account_warmup_schedule_time: row.account_warmup_schedule_time,
             account_warmup_model: row.account_warmup_model,
             reset_credit_lead_minutes: u32::try_from(row.reset_credit_lead_minutes)
+                .map_err(|_| invalid_numeric())?,
+            reset_credit_max_weekly_remaining_percent: row
+                .reset_credit_max_weekly_remaining_percent
+                .map(u32::try_from)
+                .transpose()
                 .map_err(|_| invalid_numeric())?,
         },
     })

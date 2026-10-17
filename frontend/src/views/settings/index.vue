@@ -75,6 +75,7 @@ const {
   responsesMaxDecompressedBodyMiBValue,
   usageRetentionDaysValue,
   resetCreditLeadMinutesValue,
+  resetCreditMaxWeeklyRemainingPercentValue,
   accountAutoFreezeThresholdValue,
   accountAutoFreezeWindowSecondsValue,
   accountAutoFreezeDurationSecondsValue,
@@ -194,7 +195,10 @@ watch(section, (value) => {
             v-model:schedule-time="form.accountWarmupScheduleTime"
             v-model:model="form.accountWarmupModel"
           />
-          <ResetCreditCard v-model="resetCreditLeadMinutesValue" />
+          <ResetCreditCard
+            v-model="resetCreditLeadMinutesValue"
+            v-model:max-weekly-remaining-percent="resetCreditMaxWeeklyRemainingPercentValue"
+          />
           <RequestHistoryCard v-model="usageRetentionDaysValue" />
         </template>
 

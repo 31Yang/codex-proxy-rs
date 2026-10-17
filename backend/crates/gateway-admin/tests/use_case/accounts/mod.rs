@@ -1137,7 +1137,10 @@ impl AccountStore for FakeAccountStore {
     }
 }
 
-struct StaticSettingsStore;
+#[derive(Default)]
+struct StaticSettingsStore {
+    reset_credit_max_weekly_remaining_percent: Option<u32>,
+}
 
 #[async_trait]
 impl SettingsStore for StaticSettingsStore {
@@ -1197,6 +1200,8 @@ impl SettingsStore for StaticSettingsStore {
                 account_warmup_schedule_time: "08:00".to_owned(),
                 account_warmup_model: None,
                 reset_credit_lead_minutes: 10,
+                reset_credit_max_weekly_remaining_percent: self
+                    .reset_credit_max_weekly_remaining_percent,
             },
         })
     }
@@ -1892,7 +1897,7 @@ async fn accounts_batch_update_should_commit_once_and_notify_each_provider() {
     store.set_accounts(vec![openai_account, xai_account]);
     let services = super::AdminHarness::new()
         .accounts(store.clone())
-        .settings(Arc::new(StaticSettingsStore))
+        .settings(Arc::new(StaticSettingsStore::default()))
         .provider(openai)
         .provider(xai)
         .probe(Arc::new(SuccessfulAccountProbe))
@@ -2100,7 +2105,7 @@ async fn accounts_list_should_degrade_quota_failure_to_empty_window_without_drop
     store.set_accounts(vec![account_record("openai"), xai_account]);
     let services = super::AdminHarness::new()
         .accounts(store.clone())
-        .settings(Arc::new(StaticSettingsStore))
+        .settings(Arc::new(StaticSettingsStore::default()))
         .provider(openai)
         .provider(failing)
         .probe(Arc::new(SuccessfulAccountProbe))
@@ -3457,7 +3462,7 @@ async fn accounts_service_with_probe(
 ) -> AdminServices {
     super::AdminHarness::new()
         .accounts(store)
-        .settings(Arc::new(StaticSettingsStore))
+        .settings(Arc::new(StaticSettingsStore::default()))
         .provider(provider)
         .probe(probe)
         .build()
@@ -3701,7 +3706,7 @@ async fn account_capacity_should_batch_page_ids_and_distinguish_idle_from_unavai
             let services = super::AdminHarness::new()
                 .accounts(store)
                 .account_runtime(runtime.clone())
-                .settings(Arc::new(StaticSettingsStore))
+                .settings(Arc::new(StaticSettingsStore::default()))
                 .provider(FakeProviderAdmin::new("openai", events()))
                 .build()
                 .await;

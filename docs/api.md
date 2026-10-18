@@ -2055,7 +2055,7 @@ OpenAI 仅使用同一条 `response.completed` 中的 `created_at` 与 `complete
 
 `latencyDetails` 还可包含以下上游性能指标，单位为毫秒，保留上游返回的小数。
 OpenAI 从当前响应的 `responsesapi.websocket_timing.timing_metrics` 读取，
-WebSocket 握手默认请求专项计时，客户端显式提供的开关保留原值。
+WebSocket 握手不主动添加专项计时请求头，客户端显式提供的开关保留原值。
 各字段独立可选；响应开始前、终态后的计时和明确属于其他响应的事件不写入当前请求，重试时清空
 
 `critical_path` 仅采集 `scope=response`、`coverage=complete` 且边界为
@@ -2067,10 +2067,6 @@ WebSocket 握手默认请求专项计时，客户端显式提供的开关保留�
 | --- | --- |
 | `upstreamApiOverheadMs` | API 排除引擎与客户端工具时间后的耗时 |
 | `upstreamEngineMs` | 响应级引擎耗时，取完整 critical path 的墙钟时间或直接返回的 Engine Service 时间 |
-| `upstreamEngineIapiTtftMs` | Engine IAPI TTFT 总计 |
-| `upstreamEngineServiceTtftMs` | Engine Service TTFT 总计 |
-| `upstreamEngineIapiTbtMs` | 跨引擎调用的 IAPI Token 间隔 |
-| `upstreamEngineServiceTbtMs` | 跨引擎调用的 Service Token 间隔 |
 
 以上指标按上游内部口径展示，不相加重建总耗时，不替换请求级 `firstTokenLatencyMs`。
 它们仅补充性能诊断，不改变列表与聚合统计的速率分母

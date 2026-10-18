@@ -94,11 +94,17 @@ export interface KeyUsageQuery {
   model?: string
 }
 
-export function getKeyUsageOverview(params: KeyUsageQuery, options: RequestOptions = {}) {
+interface KeyUsageRecordsQuery extends KeyUsageQuery {
+  kind: KeyUsageRecordKind
+  currentPage: number
+  pageSize: number
+}
+
+export function getKeyUsageOverview(data: KeyUsageQuery, options: RequestOptions = {}) {
   return request<KeyUsageOverview>({
     url: '/api/key-usage/overview',
     method: 'GET',
-    params,
+    params: data,
     ...options,
   })
 }
@@ -119,14 +125,11 @@ export function getKeyUsageConfig(options: RequestOptions = {}) {
   })
 }
 
-export function getKeyUsageRecords(
-  params: KeyUsageQuery & { kind: KeyUsageRecordKind, currentPage: number, pageSize: number },
-  options: RequestOptions = {},
-) {
+export function getKeyUsageRecords(data: KeyUsageRecordsQuery, options: RequestOptions = {}) {
   return request<KeyUsagePage>({
     url: '/api/key-usage/records',
     method: 'GET',
-    params,
+    params: data,
     ...options,
   })
 }

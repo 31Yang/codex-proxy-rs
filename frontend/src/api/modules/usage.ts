@@ -396,6 +396,8 @@ interface UsageDetailQuery {
 
 type UsageDiagnosticsQuery = UsageRangeQuery & { dimension: string }
 
+type DiagnosticsDownloadParams = { requestId: string } | { errorId: string }
+
 export function getUsageRecords(data: UsagePageQuery, options: RequestOptions = {}) {
   return request<UsageRecordsResponse>({
     url: '/api/admin/usage/records',
@@ -441,7 +443,7 @@ export function getUsageRecordInsightsDiagnostics(data: UsageDiagnosticsQuery, o
   })
 }
 
-export function downloadDiagnostics(data: { requestId: string } | { errorId: string }, options: RequestOptions = {}) {
+export function downloadDiagnostics(data: DiagnosticsDownloadParams, options: RequestOptions = {}) {
   return requestRaw({
     url: '/api/admin/diagnostics/export',
     method: 'GET',

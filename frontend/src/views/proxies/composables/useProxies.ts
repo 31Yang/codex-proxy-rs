@@ -226,8 +226,7 @@ export function useProxies() {
 
   async function reloadAfterCreate() {
     search.value = ''
-    query.page.value = 1
-    await query.execute()
+    await query.reloadFromStart()
   }
 
   function requestDelete(proxy: OutboundProxyRecord) {
@@ -279,13 +278,11 @@ export function useProxies() {
   }
 
   function setPage(page: number) {
-    query.page.value = page
-    void query.execute()
+    void query.execute({ page })
   }
 
   function setPageSize(size: number) {
-    query.pageSize.value = size
-    setPage(1)
+    void query.execute({ page: 1, pageSize: size })
   }
 
   watch(() => form.proxyUrl, () => {
@@ -298,7 +295,7 @@ export function useProxies() {
 
   watch(search, (_value, _previous, onCleanup) => {
     const timer = setTimeout(() => {
-      void setPage(1)
+      void query.reloadFromStart()
     }, 300)
     onCleanup(() => clearTimeout(timer))
   })

@@ -195,6 +195,7 @@ pub struct UsageQuery {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DashboardQuery {
     pub range: TimeRange,
+    pub yesterday_range: TimeRange,
     pub granularity: Granularity,
     pub account_limit: u16,
     pub recent_request_limit: u16,
@@ -202,10 +203,21 @@ pub struct DashboardQuery {
 }
 
 impl DashboardQuery {
-    #[must_use]
-    pub fn new(range: TimeRange) -> Self {
-        Self {
+    pub fn new(
+        range: TimeRange,
+        timezone: gateway_core::time::DeploymentTimeZone,
+    ) -> Result<Self, AdminModelError> {
+        let yesterday_range = TimeRange::new(
+            timezone
+                .days_before(range.end, 1)
+                .ok_or(AdminModelError::InvalidTimeRange)?,
+            timezone
+                .day_start(range.end)
+                .ok_or(AdminModelError::InvalidTimeRange)?,
+        )?;
+        Ok(Self {
             range,
+            yesterday_range,
             granularity: Granularity::for_range(range),
             account_limit: 4,
             recent_request_limit: 10,
@@ -213,7 +225,7 @@ impl DashboardQuery {
                 outcome: Some(RequestOutcome::Succeeded),
                 ..UsageFilter::default()
             },
-        }
+        })
     }
 }
 
@@ -653,6 +665,7 @@ pub struct DashboardObservation {
     pub analytics: AnalyticsMetadata,
     pub range: TimeRange,
     pub totals: DashboardTotals,
+    pub yesterday: RequestMetrics,
     pub provider_accounts: AccountPoolMetrics,
     pub runtime_slots: Option<DashboardRuntimeSlots>,
     pub trend: Vec<RequestMetricPoint>,

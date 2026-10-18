@@ -25,6 +25,7 @@ async fn dashboard_summary_should_include_quota_exhaustion_in_unavailable_headli
         .dashboard_observation
         .lock()
         .expect("dashboard observation") = Some(DashboardObservation {
+        yesterday: Default::default(),
         analytics: gateway_admin::model::observability::AnalyticsMetadata {
             coverage_start: Some(now - Duration::hours(1)),
             coverage_end: Some(now),
@@ -106,14 +107,14 @@ async fn dashboard_summary_should_include_quota_exhaustion_in_unavailable_headli
 }
 
 #[tokio::test]
-async fn dashboard_summary_should_use_lifetime_totals_for_card_footers() {
+async fn dashboard_summary_should_keep_yesterday_comparison_separate_from_today_and_lifetime() {
     use axum::{
         body::{Body, to_bytes},
         http::{Request, StatusCode, header},
     };
     use chrono::{Duration, Utc};
     use gateway_admin::model::observability::{
-        AccountPoolMetrics, DashboardObservation, DashboardTotals, TimeRange,
+        AccountPoolMetrics, DashboardObservation, DashboardTotals, RequestMetrics, TimeRange,
     };
     use gateway_api::admin::observability;
     use tower::ServiceExt as _;
@@ -127,6 +128,13 @@ async fn dashboard_summary_should_use_lifetime_totals_for_card_footers() {
         .dashboard_observation
         .lock()
         .expect("dashboard observation") = Some(DashboardObservation {
+        yesterday: RequestMetrics {
+            request_count: 7,
+            input_tokens: 400,
+            cached_input_tokens: 200,
+            total_tokens: 500,
+            ..Default::default()
+        },
         analytics: Default::default(),
         runtime_slots: None,
         range: TimeRange::new(now - Duration::hours(1), now).expect("dashboard range"),
@@ -161,6 +169,11 @@ async fn dashboard_summary_should_use_lifetime_totals_for_card_footers() {
         .expect("dashboard response body");
     let value: serde_json::Value = serde_json::from_slice(&body).expect("dashboard response JSON");
     assert_eq!(status, StatusCode::OK, "{value}");
+    let cards = &value["data"]["cards"];
+    assert_eq!(cards["traffic"]["todayRequestsValue"], 0);
+    assert_eq!(cards["traffic"]["yesterdayRequestsValue"], 7);
+    assert_eq!(cards["tokens"]["yesterdayTokensValue"], 500);
+    assert_eq!(cards["cache"]["yesterdayHitRateValue"], 0.5);
     assert_eq!(
         value["data"]["analytics"]["coverageStartDisplay"],
         serde_json::Value::Null
@@ -208,6 +221,7 @@ async fn dashboard_summary_should_default_to_current_deployment_day() {
         .dashboard_observation
         .lock()
         .expect("dashboard observation") = Some(DashboardObservation {
+        yesterday: Default::default(),
         analytics: Default::default(),
         runtime_slots: None,
         range: TimeRange::new(now - Duration::hours(1), now).expect("dashboard range"),
@@ -1091,6 +1105,7 @@ async fn calendar_queries_and_display_follow_deployment_timezone_with_one_anchor
         let fixture = AdminTestFixture::with_timezone(timezone).await;
         fixture.auth.insert_session("valid-session");
         *fixture.dashboard_observation.lock().unwrap() = Some(DashboardObservation {
+            yesterday: Default::default(),
             analytics: gateway_admin::model::observability::AnalyticsMetadata {
                 coverage_start: Some(range.start),
                 coverage_end: Some(end),

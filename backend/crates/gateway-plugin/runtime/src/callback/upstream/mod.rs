@@ -159,12 +159,7 @@ impl ManagedUpstream {
                 (name, value.to_vec())
             })
             .collect();
-        headers.extend(
-            request
-                .headers
-                .into_iter()
-                .map(|(name, value)| (name, value.into_bytes())),
-        );
+        headers.extend(request.headers);
         Ok((
             HttpRequest {
                 method: request.method,
@@ -237,7 +232,7 @@ pub(super) async fn dispatch(
                 return Err(denied());
             }
             let mut socket = managed.socket.try_lock().map_err(|_| denied())?;
-            if let Some((url, _)) = socket
+            if let Some((url, connection)) = socket
                 .as_ref()
                 .filter(|(_, connection)| !connection.is_closed())
             {
@@ -245,7 +240,13 @@ pub(super) async fn dispatch(
                     return Err(denied());
                 }
                 return Ok(RpcReply {
-                    result: serde_json::json!({"status":101,"headers":[],"stream":null}),
+                    result: serde_json::json!({
+                        "status": 101,
+                        "http_version": format!("{:?}", connection.handshake_version()),
+                        "headers": connection.handshake_headers(),
+                        "stream": null,
+                        "trailers": [],
+                    }),
                     payload: vec![],
                 });
             }
@@ -266,12 +267,8 @@ pub(super) async fn dispatch(
                     .map_or_else(|error| error.send_state, |_| UpstreamSendState::Sent),
             );
             let mut response = response.map_err(super::http::http_error)?;
-            let headers = response
-                .headers
-                .into_iter()
-                .map(|(name, value)| String::from_utf8(value).map(|value| (name, value)))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|_| invalid())?;
+            let headers = response.headers;
+            let mut trailers = Vec::new();
             let mut payload = Vec::new();
             if let Some(body) = response.body.as_mut() {
                 while let Some(chunk) = body
@@ -284,6 +281,7 @@ pub(super) async fn dispatch(
                     }
                     payload.extend_from_slice(&chunk);
                 }
+                trailers = body.take_trailers();
             }
             if let Some(connection) = response.connection {
                 *socket = Some((url, Arc::new(connection)));
@@ -291,8 +289,10 @@ pub(super) async fn dispatch(
             Ok(RpcReply {
                 result: serde_json::to_value(wire::HttpResponse {
                     status: response.status,
+                    http_version: format!("{:?}", response.version),
                     headers,
                     stream: None,
+                    trailers,
                 })
                 .map_err(|_| invalid())?,
                 payload,

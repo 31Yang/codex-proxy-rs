@@ -1001,8 +1001,7 @@ impl DefaultExecutionService {
         let execution_effects_baseline = parent.graph.effects.epoch();
         metadata.endpoint = "host.model".to_owned();
         metadata.transport = ClientTransport::InternalPlugin;
-        metadata.client_ip = None;
-        metadata.user_agent = None;
+        metadata.inherit_request_origin(&extension_scope);
         let authorization = AuthorizedExecution {
             account_scope,
             response_control: None,
@@ -1155,8 +1154,7 @@ impl DefaultExecutionService {
         let execution_effects_baseline = graph.effects.epoch();
         metadata.endpoint = "host.model".to_owned();
         metadata.transport = ClientTransport::InternalPlugin;
-        metadata.client_ip = None;
-        metadata.user_agent = None;
+        metadata.inherit_request_origin(&authority.extension_scope);
         self.client_api_key_usage
             .record_used(authority.client.policy.key_id());
         self.start_authorized(

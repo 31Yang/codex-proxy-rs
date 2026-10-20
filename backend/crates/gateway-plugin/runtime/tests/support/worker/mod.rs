@@ -1683,6 +1683,7 @@ impl Peer {
             }))
             .await?;
             for (callback, (result, payload)) in callbacks.iter().zip(results) {
+                self.append_observation_marker("upstream_http_marker", &result);
                 if let Some(stream) = result["stream"].as_str() {
                     response_body.clear();
                     let read_method = if callback["method"] == "host.http.do_stream" {
@@ -1699,6 +1700,7 @@ impl Peer {
                                 vec![],
                             )
                             .await?;
+                        self.append_observation_marker("upstream_http_marker", &result);
                         response_body.extend(chunk);
                         if result["eof"] == true {
                             break;
@@ -1715,7 +1717,9 @@ impl Peer {
             let mut message = UpstreamAdapterEvent::new(
                 serde_json::from_value::<ExecutionEvent>(event["event"].clone()).unwrap(),
             );
-            message.service_tier = event["service_tier"].as_str().map(str::to_owned);
+            message.observation = event
+                .get("observation")
+                .map(|value| serde_json::from_value(value.clone()).unwrap());
             message.continuation = event
                 .get("continuation")
                 .map(|value| serde_json::from_value(value.clone()).unwrap());

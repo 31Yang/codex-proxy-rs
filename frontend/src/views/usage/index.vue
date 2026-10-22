@@ -30,7 +30,8 @@ const { timeRange, timeRangeParams, disabledDate, refreshTimeRangeEnd, latestTim
   = useUsageTimeRange()
 
 const {
-  searchQuery,
+  filterField,
+  filterValue,
   providerQuery,
   usagePagination,
   loading,
@@ -113,7 +114,8 @@ watch(timeRange, () => {
           class="grid min-h-130 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-3"
         >
           <UsageFilters
-            v-model:search="searchQuery"
+            v-model:field="filterField"
+            v-model:value="filterValue"
             :loading="loading"
             :refreshing="refreshingList"
             @refresh="refreshUsageRecords"

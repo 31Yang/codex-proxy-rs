@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ZIconButton, ZInput } from '@codex-proxy/ui'
+import type { UsageRecordFilterField } from '../composables/useUsageRecordsTable'
+import { ZIconButton, ZInput, ZSelect } from '@codex-proxy/ui'
 
 import { RefreshCw, Search } from '@lucide/vue'
 
@@ -12,13 +13,25 @@ const emit = defineEmits<{
   refresh: []
 }>()
 
-const search = defineModel<string>('search', { required: true })
+const field = defineModel<UsageRecordFilterField>('field', { required: true })
+const value = defineModel<string>('value', { required: true })
+const fieldOptions = [
+  { value: 'key', label: '密钥名称' },
+  { value: 'account', label: '账号' },
+  { value: 'model', label: '模型' },
+]
 </script>
 
 <template>
   <div class="flex w-full flex-wrap items-center gap-3" role="group" aria-label="使用记录筛选与操作">
-    <div class="w-full min-w-0 sm:w-96 sm:flex-none">
-      <ZInput v-model="search" placeholder="密钥名称、账号或模型" aria-label="搜索使用记录：密钥名称、账号或模型" class="w-full">
+    <div class="grid w-full min-w-0 grid-cols-[8rem_minmax(0,1fr)] gap-2 sm:w-md sm:flex-none">
+      <ZSelect v-model="field" :options="fieldOptions" aria-label="请求明细筛选字段" />
+      <ZInput
+        v-model="value"
+        placeholder="输入筛选内容"
+        aria-label="请求明细筛选内容"
+        class="w-full"
+      >
         <template #prefix>
           <Search class="size-4.5 text-cp-text-tertiary" />
         </template>

@@ -680,7 +680,7 @@ call 与账号的绑定保存在网关进程内，未连接时一小时过期；
 | `GET` | `/api/key-usage/config` | 无 | 当前 Key 的客户端配置凭据 |
 | `GET` | `/api/key-usage/version` | 无 | “关于”弹窗使用的当前版本号和提交号 |
 
-用量查询支持[页面时间合同](#页面时间合同)，默认 `period=7d`，一次最多 31 天。模型按完整名称匹配；
+用量查询支持[页面时间合同](#页面时间合同)，默认 `period=7d`，一次最多 31 天。模型按字面量包含匹配，区分大小写，通配符按普通字符处理
 不接受 Key ID、账号、Provider 等范围参数或其他未知字段。页码默认 1，每页默认 20，允许 1–100 条；
 `kind` 为 `success`（默认）、`error` 或 `all`，沿用使用统计的请求结果筛选：错误包括失败和未完成请求，
 全部还包括取消与进行中的请求；一次请求只占一条记录。分页响应为 `{ items, currentPage, pageSize, total }`
@@ -2007,9 +2007,9 @@ Dashboard 的 `accountUsage[]` 由后端提供 `usageWindow`、`metricLabel`、`
 Dashboard 默认 `period=today`，用量、诊断和错误查询默认 `period=7d`，范围参数遵循[页面时间合同](#页面时间合同)。
 Dashboard 返回原始 `asOf` 及 `asOfDisplay`，作为当前数据的查询锚点
 
-请求明细列表可组合页码、时间范围、Provider、Client Key、账号、模型、route、transport、状态码、
-request/response/upstream ID、outcome 与搜索文本。`search` 仅供明细及错误列表使用；
-汇总、洞察和诊断不接受搜索参数，管理观测接口不接受路由分组筛选。页面搜索不改变顶部统计范围
+请求明细列表接受 `currentPage`、`pageSize`、时间范围、`provider`、`clientApiKeyName`、`accountName`、`model` 和 `status`。
+汇总和洞察只接受时间范围与 `provider`；诊断另接受 `dimension`、`model` 和 `statusCode`。
+各接口拒绝未知参数，明细筛选不改变顶部统计范围
 
 请求列表的 `status` 可取 `success`、`error`、`all`，默认 `success`；未知值返回 `400`。
 `success` 沿用成功用量记录范围，`error` 包含最终 `failed`、`incomplete` 的请求，
@@ -2052,14 +2052,11 @@ OpenAI 优先采用服务端 `openai-model` / `x-openai-model` 报告（流内�
 缺少终态声明时保留首次声明。这些值仅表示上游报告，不作为模型真实性证明，也不参与路由、
 聚合或本地计价模型选择。没有保存上游模型报告的记录保持未知
 
-请求记录列表的 `search` 使用字面量前缀匹配，支持 Client Key ID / 名称、
-账号 ID、账号邮箱与名称、请求 / 上游模型 ID。密钥名称不区分大小写，其他字段区分大小写。
-密钥名称、账号邮箱与名称按请求记录的历史快照检索，
-不随当前密钥或账号修改、删除而改变；`%`、`_` 和 `\` 均按普通字符处理，不作为搜索通配符
+请求明细的 `clientApiKeyName`、`accountName` 按字面量包含匹配请求保存的历史名称快照，区分大小写，
+不解析为 ID，也不依赖当前配置是否存在。`model` 按字面量包含匹配请求模型或上游模型，`%`、`_` 和 `\` 按普通字符处理
 
-请求记录的 `requestId`、`upstreamRequestId` 参数按模型执行 ID 或上游 ID 精确查询；
-搜索框不匹配请求 ID，只有入口 ID 时需结合时间与入口日志定位。
-请求记录和错误列表支持按密钥名称搜索，不支持密钥值或可见前缀搜索
+运维错误列表的 `search` 使用字面量前缀匹配，不支持密钥值或可见前缀搜索。
+请求详情通过 `/api/admin/usage/records/detail?id=...` 查询
 
 ### 记录范围与统计口径
 

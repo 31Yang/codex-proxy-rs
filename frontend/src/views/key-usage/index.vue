@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { KeyUsageVersion } from '@/api/modules/key-usage'
-import { ZInput, ZScrollbar } from '@codex-proxy/ui'
+import { ZInput, ZScrollbar, ZSelect } from '@codex-proxy/ui'
 import { Search } from '@lucide/vue'
 import { shallowRef } from 'vue'
 import { getKeyUsageVersion } from '@/api/modules/key-usage'
@@ -19,6 +19,7 @@ import { useKeyUsage } from './composables/useKeyUsage'
 const { period, model, kind, refreshInterval, overview, overviewLoading, overviewError, refreshing, recordsStale, records, refresh, changePageSize, changePage } = useKeyUsage()
 const { items, currentPage, pageSize, total, loading: recordsLoading, error: recordsError } = records
 const { showConfig, configKey, configuring, apiBaseUrl, openConfig, copyConfig } = useKeyConfig()
+const fieldOptions = [{ value: 'model', label: '模型' }]
 const aboutOpen = shallowRef(false)
 const version = shallowRef<KeyUsageVersion | null>(null)
 const versionLoading = shallowRef(false)
@@ -49,11 +50,14 @@ async function openAbout() {
           <KeyUsageHeader v-model:period="period" v-model:refresh-interval="refreshInterval" :name="overview?.key.name" :prefix="overview?.key.prefix" :refreshing="refreshing || overviewLoading" :configuring="configuring" @refresh="refresh" @configure="openConfig" @open-about="openAbout" />
           <div class="flex flex-wrap items-center justify-between gap-3">
             <span v-if="overview" class="text-cp-sm text-cp-text-tertiary">更新于 {{ overview.asOfDisplay }}</span>
-            <ZInput v-model="model" class="ml-auto w-60 max-w-full" placeholder="输入完整模型名称" aria-label="筛选统计和日志的模型" :maxlength="128">
-              <template #prefix>
-                <Search class="size-4" />
-              </template>
-            </ZInput>
+            <div class="ml-auto grid w-full min-w-0 grid-cols-[8rem_minmax(0,1fr)] gap-2 sm:w-md sm:flex-none">
+              <ZSelect model-value="model" :options="fieldOptions" aria-label="请求明细筛选字段" />
+              <ZInput v-model="model" class="w-full" placeholder="输入筛选内容" aria-label="请求明细筛选内容" :maxlength="128">
+                <template #prefix>
+                  <Search class="size-4.5 text-cp-text-tertiary" />
+                </template>
+              </ZInput>
+            </div>
           </div>
         </div>
         <p v-if="overviewError" role="alert" class="m-0 rounded-cp-lg bg-cp-error-container px-4 py-3 text-cp-sm text-cp-error-text">

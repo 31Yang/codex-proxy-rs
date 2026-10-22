@@ -2149,6 +2149,7 @@ where
             self.current_transport_observation();
         let service_tier = self.current_service_tier();
         let provider_metadata_json = self.current_provider_metadata_json();
+        self.record_final_usage();
         self.trace.record(
             "request.finished",
             json!({"outcome": "succeeded", "attempts": self.attempts}),
@@ -2316,6 +2317,7 @@ where
         if self.is_finalized() {
             return Ok(());
         }
+        self.record_final_usage();
         self.trace.record(
             "request.finished",
             json!({
@@ -2522,6 +2524,29 @@ where
         let observed = escalate_send_state(self.current_send_state(), observed);
         self.send_state_watermark = observed;
         self.send_state_watermark
+    }
+
+    fn record_final_usage(&self) {
+        if !self.trace.is_enabled() {
+            return;
+        }
+        let usage = &self.observation.usage;
+        let mut facts = json!({
+            "inputTokens": usage.input_tokens,
+            "outputTokens": usage.output_tokens,
+            "cachedInputTokens": usage.cached_input_tokens,
+            "cacheWriteInputTokens": usage.cache_write_input_tokens,
+            "reasoningOutputTokens": usage.reasoning_output_tokens,
+            "imageInputTokens": usage.image_input_tokens,
+            "imageOutputTokens": usage.image_output_tokens,
+            "totalTokens": usage.total_tokens,
+        });
+        facts["boundary"] = json!("finalization_prepared");
+        facts["costSource"] = json!(self.observation.cost.source().as_str());
+        facts["downstreamCommitted"] = json!(self.delivery_committed);
+        self.trace
+            .attempt(self.attempts)
+            .record_evidence("request.usage", facts);
     }
 
     fn record_current_provider_success(&mut self) {

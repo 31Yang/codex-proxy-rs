@@ -1979,7 +1979,7 @@ errorCode, errorMessage, startedAt, completedAt, expiresAt, createdAt, updatedAt
 | `GET` | `/api/admin/usage/insights/overview` | 用量、成本与成功率洞察 |
 | `GET` | `/api/admin/usage/insights/diagnostics` | 按维度聚合诊断 |
 | `GET` | `/api/admin/operations/errors` | 运维错误分页列表 |
-| `GET` | `/api/admin/diagnostics/export` | 按 `requestId` 或 `errorId` 下载诊断 JSON 附件 |
+| `GET` | `/api/admin/diagnostics/export` | 按 `requestId` 或 `errorId` 下载诊断 ZIP 附件 |
 
 ### Dashboard 容量与账号用量
 
@@ -2114,9 +2114,11 @@ WebSocket 握手不主动添加专项计时请求头，客户端显式提供的�
 ### 诊断与恢复关联
 
 详情接口按 `id` 可读取成功、失败或未完成请求，普通详情与列表不传输时间线。
-管理员通过 `GET /api/admin/diagnostics/export` 下载 JSON 附件，必须且只能指定
+管理员通过 `GET /api/admin/diagnostics/export` 下载 ZIP 附件，必须且只能指定
 `requestId` 或 `errorId`；`errorId` 指运维错误事件 ID，无模型请求的后台错误也能导出。
-响应不使用普通 JSON 信封，设置 `Content-Disposition: attachment` 与 `Cache-Control: private, no-store`
+响应类型为 `application/zip`，设置 `Content-Disposition: attachment` 与 `Cache-Control: private, no-store`。
+包内 `diagnostics.json` 保存完整结构化证据，`summary.txt` 汇总请求结果、模型、时延、用量与缺口，
+`README.txt` 说明证据边界；三个文件均来自服务端脱敏后的文档
 
 诊断包 `schemaVersion: 5` 用于故障分析，不是备份或导入格式。后端按目标 ID 收集请求、尝试、
 完整已存时间线、错误原因链、原始上游错误及恢复关联；前端只负责下载。
@@ -2128,6 +2130,21 @@ WebSocket 握手不主动添加专项计时请求头，客户端显式提供的�
 `attempt.failed.data.recovery` 保存 Provider 的重放安全性和恢复意图；`retry.decided` 保存当时
 实际参与决策的门槛、剩余预算和发送状态，`retry.policy` 保存宿主及插件策略的停止事实。
 已有的 `provider.precommit.released` 数据保留释放原因、预取字节数与等待时间，不等同于下游已提交
+
+Trace v3 为路由、账号选择、失败、重试、响应边界及终态事实预留独立的 64 KiB 预算，
+普通事件另有 64 KiB 预算，总事件数最多 128。`stageCounts` 记录至多 64 类已采集阶段的次数，
+事件淘汰不抹除阶段计数；`droppedEvidenceEvents` 与 `stageCountOverflow` 分别报告关键证据淘汰和阶段统计超限
+
+OpenAI Responses 的 `provider.request.input` 与 `provider.request.outbound` 分别记录 Provider 收到的
+已解析正文和最终准备发送的正文指纹，包括指令、工具、缓存键、模型设置与有序输入。
+输入保留前 16 项的独立指纹、每 16 项一块的前 32 块指纹及全量输入指纹，超出分段范围明确计数。
+出站关联头仅保存指纹，`provider.request.account_scope` 保存账号归属依据及状态处理前后的指纹。
+这些观测不重组转发正文，准备发送不等同于确认发送，指纹也不证明上游缓存仍存在
+
+`provider.response.usage` 从已解析的上游终态单独提取已知数值字段，区分缺失、无效和明确的零，
+同时保存共享 parser 的解析结果；`request.usage` 保存最终提交持久化前的网关归集值。
+`provider.response.parse_gap` 标记 JSON 或 canonical 投影失败，原始 wire 仍按原有规则透传。
+上述关键事实复用现有 trace JSON 随请求终态保存，不新增诊断表或列；旧记录不能补生成未采集的事实
 
 采集阶段仍按有界 trace 合同处理未知 JSON 键和值，未知事件名称保留摘要；导出不会补造被省略的原文。
 下载端按 Provider 凭据、管理认证与传输头合同移除令牌、密钥、认证头、Cookie 和 URL 认证部分，

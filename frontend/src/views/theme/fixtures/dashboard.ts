@@ -337,6 +337,8 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
       quotaUsedPercent: 32,
       metricLabel: t('appearance.preview.dashboard.todaySToken'),
       metricValue: '926K',
+      metric: 'tokens',
+      metricValueRaw: 926_000,
       usageWindow: {
         key: 'short',
         group: 'shortTerm',
@@ -352,6 +354,7 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
         resetAtDisplay: '—',
       },
       lastUsed: t('appearance.preview.components.justNow'),
+      lastUsedAt: new Date().toISOString(),
     },
     {
       id: 'preview-xai-1',
@@ -370,6 +373,8 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
       quotaUsedPercent: null,
       metricLabel: t('appearance.preview.dashboard.times'),
       metricValue: '894',
+      metric: 'requests',
+      metricValueRaw: 894,
       usageWindow: {
         key: 'free-rolling-24h',
         group: 'shortTerm',
@@ -394,6 +399,7 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
         },
       },
       lastUsed: t('common.time.minutesAgo', { count: 5 }),
+      lastUsedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
     },
     {
       id: 'preview-openai-2',
@@ -408,6 +414,8 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
       quotaUsedPercent: 68,
       metricLabel: t('appearance.preview.dashboard.todaySToken'),
       metricValue: '512K',
+      metric: 'tokens',
+      metricValueRaw: 512_000,
       usageWindow: {
         key: 'short',
         group: 'shortTerm',
@@ -423,6 +431,7 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
         resetAtDisplay: '—',
       },
       lastUsed: t('common.time.minutesAgo', { count: 8 }),
+      lastUsedAt: new Date(Date.now() - 8 * 60_000).toISOString(),
     },
   ],
   usageRecords: [

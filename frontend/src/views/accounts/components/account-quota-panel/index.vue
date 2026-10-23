@@ -4,6 +4,7 @@ import type { Account } from '@/api'
 import { ZEmpty, ZIconButton } from '@codex-proxy/ui'
 
 import { ChartNoAxesCombined, RefreshCw, UserRound } from '@lucide/vue'
+import { useTimeAgoIntl } from '@vueuse/core'
 
 import { computed, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -26,7 +27,13 @@ const emit = defineEmits<{
   quotaReset: [accountId: string]
 }>()
 
-const { t } = useI18n({ useScope: 'global' })
+const { t, locale } = useI18n({ useScope: 'global' })
+
+const refreshedAtDisplay = useTimeAgoIntl(() => props.account.quota.refreshedAt ?? 0, {
+  get locale() { return locale.value },
+  relativeTimeFormatOptions: { numeric: 'auto', style: 'short' },
+  insertSpace: false,
+})
 
 const quotaEntries = computed(() => groupedAccountQuotaWindows(
   orderedPanelQuotaWindows(props.account.quota.windows),
@@ -59,7 +66,7 @@ watch(hasPersonalInfo, (available) => {
             <AccountPlanBadge :plan-type="account.planType" :plan-type-display="account.planTypeDisplay" size="sm" />
           </template>
           <span>·</span>
-          <span>{{ t('accounts.quota.lastRefreshed', { refreshedAtDisplay: account.quota.refreshedAtDisplay }) }}</span>
+          <span>{{ t('accounts.quota.lastRefreshed', { refreshedAtDisplay: account.quota.refreshedAt ? refreshedAtDisplay : '—' }) }}</span>
         </p>
       </div>
       <div v-if="hasActions" class="flex shrink-0 items-center gap-0.5 [&_svg]:size-3.5 [&_svg]:stroke-2">

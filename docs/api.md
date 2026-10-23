@@ -158,7 +158,10 @@ Codex PAT 验证服务不可用和身份响应无效分别返回 `50301`、`5020
 `YYYY-MM-DD HH:mm:ss`，短时间、相对时间和图表标签按对应视图返回；缺失时间的展示字段为 `null` 或占位文本。
 调用者直接显示文本，使用原始时间点进行排序、比较和输入，不把展示文本转回请求时间
 
-账号、模型用量和 Key 列表的最近使用时间由前端根据原始 RFC3339 时间点，通过 VueUse `useTimeAgoIntl` 按界面语言显示短相对时间，并随时间更新；悬停的完整日期仍使用后端 `lastUsedAtFullDisplay`，不使用浏览器本地时区重算
+账号、模型用量和 Key 列表以及 Dashboard 的最近使用时间由前端根据原始 RFC3339 `lastUsedAt`，
+通过 VueUse `useTimeAgoIntl` 按界面语言显示短相对时间，并随时间更新。账号额度的最近刷新时间
+同样使用 `quota.refreshedAt`，缺失时显示占位文本。悬停的完整日期仍使用后端
+`lastUsedAtFullDisplay`，不使用浏览器本地时区重算
 
 账号冷却返回 RFC3339 `rateLimitedUntil` 和 `rateLimitRecoveryDisplay`，后者包含剩余时长、
 到期时间或等待恢复探测的提示，随账号数据刷新；前端不解析展示文本或自行计算恢复提示
@@ -1997,6 +2000,9 @@ errorCode, errorMessage, startedAt, completedAt, expiresAt, createdAt, updatedAt
 | `GET` | `/api/admin/operations/errors` | 运维错误分页列表 |
 | `GET` | `/api/admin/diagnostics/export` | 按 `requestId` 或 `errorId` 下载诊断 ZIP 附件 |
 
+用量汇总的 `averageLatencyMsValue` 为可空毫秒数，前端按持续时长格式化；无延迟样本时为 `null`，
+`averageLatencyMs` 保留为兼容展示字段
+
 ### Dashboard 趋势指标
 
 趋势摘要 `summary[]` 返回稳定的 `metric`、展示数值 `value` 和可空的 `ratio`，指标名称由前端本地化
@@ -2026,7 +2032,10 @@ Dashboard 的 `capacityInfo` 统计普通容量，不含独立审批池；`maxCo
 `capacityInfo.totalSlots` 为 `number | null`；可用账号池含无限并发账号时为 `null`，此时 `availableSlots` 也为 `null`。
 `usedSlots` 仍表示实际在途数，Redis 不可用时为 `null`；没有可用账号时 `totalSlots` 为 `0`
 
-Dashboard 的 `accountUsage[]` 由后端提供 `usageWindow`、`metricLabel`、`metricValue`
+Dashboard 的 `accountUsage[]` 返回稳定指标 `metric=requests|tokens`、可空原始数值 `metricValueRaw` 和
+可空 RFC3339 `lastUsedAt`，前端负责指标名称、数字和相对时间的本地化。
+`requests` 使用代表性额度窗口的本地请求数，`tokens` 使用今日 Token；未知数值为 `null`，零值保留 `0`。
+`metricLabel`、`metricValue` 和 `lastUsed` 保留给兼容调用方，当前管理端不解析或显示这些字段
 
 `usageWindow` 复用账号额度窗口合同，缺失额度事实时为 `null`；窗口标签、百分比、触顶状态、重置时间
 和本地用量由 Provider/Admin 投影。套餐缺失不表示免费套餐，显示时舍入的百分比不用于判断触顶

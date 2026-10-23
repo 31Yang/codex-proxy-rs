@@ -401,7 +401,15 @@ pub struct DashboardCacheCardView {
     pub average_first_token_latency_ms: String,
 }
 
-/// 旧 Dashboard 账号概览卡片所需的 Provider 安全投影
+/// Dashboard 账号概览指标的稳定标识
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DashboardAccountMetric {
+    Requests,
+    Tokens,
+}
+
+/// Dashboard 账号概览卡片所需的 Provider 安全投影
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DashboardAccountUsageView {
@@ -416,8 +424,11 @@ pub struct DashboardAccountUsageView {
     pub request_buckets: Vec<crate::time::RequestBucketView>,
     pub quota_used_percent: Option<f64>,
     pub usage_window: Option<crate::admin::accounts::AccountQuotaWindowView>,
+    pub metric: DashboardAccountMetric,
+    pub metric_value_raw: Option<u64>,
     pub metric_label: String,
     pub metric_value: String,
+    pub last_used_at: Option<DateTime<Utc>>,
     pub last_used: String,
 }
 
@@ -610,6 +621,7 @@ pub struct UsageSummaryView {
     pub cache_write_input_tokens: String,
     pub total_tokens: String,
     pub average_latency_ms: String,
+    pub average_latency_ms_value: Option<u64>,
     pub logical_requests: RequestMetricsView,
     pub attempts: AttemptMetricsView,
 }

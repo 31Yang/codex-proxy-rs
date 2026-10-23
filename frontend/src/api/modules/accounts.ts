@@ -35,6 +35,7 @@ export interface AccountQuotaCredits {
 }
 
 export interface AccountQuota {
+  refreshedAt: string | null
   refreshedAtDisplay: string
   limitReached: boolean
   // 429 临时限流（Redis 冷却）到期时间；非限流中为 null。

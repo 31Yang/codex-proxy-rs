@@ -160,8 +160,11 @@ export interface DashboardAccountUsage {
   requestBuckets: DashboardAccountRequestBucket[]
   quotaUsedPercent: number | null
   usageWindow: AccountQuotaWindow | null
+  metric: 'requests' | 'tokens'
+  metricValueRaw: number | null
   metricLabel: string
   metricValue: string
+  lastUsedAt: string | null
   lastUsed: string
 }
 

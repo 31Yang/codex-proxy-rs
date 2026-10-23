@@ -928,8 +928,10 @@ pub(crate) fn dashboard_view(
             .filter(|window| window.used_percent.is_none())
             .and_then(|window| window.local_usage.as_ref())
             .map(|usage| usage.request_count);
-        let (metric_label, metric_value) = match local_requests {
+        let (metric, metric_value_raw, metric_label, metric_value) = match local_requests {
             Some(count) => (
+                DashboardAccountMetric::Requests,
+                Some(count),
                 "次数".to_owned(),
                 if count > 0 {
                     format_compact_number(count)
@@ -938,6 +940,8 @@ pub(crate) fn dashboard_view(
                 },
             ),
             None => (
+                DashboardAccountMetric::Tokens,
+                credential.total_tokens,
                 "今日 Token".to_owned(),
                 credential
                     .total_tokens
@@ -971,8 +975,11 @@ pub(crate) fn dashboard_view(
             usage_window: credential
                 .quota_window
                 .map(|window| crate::admin::accounts::quota_window_view(window, time)),
+            metric,
+            metric_value_raw,
             metric_label,
             metric_value,
+            last_used_at: credential.last_used_at,
             last_used: time.relative_optional(credential.last_used_at, range.end),
         });
     }
@@ -1060,6 +1067,7 @@ pub(crate) fn usage_summary_view(
         cache_write_input_tokens: format_compact_number(overview.requests.cache_write_input_tokens),
         total_tokens: format_compact_number(overview.requests.total_tokens),
         average_latency_ms: display_duration(summary.average_latency_ms),
+        average_latency_ms_value: summary.average_latency_ms,
         logical_requests: request_summary_metrics_view(&overview.requests),
         attempts: attempt_metrics_view(&overview.attempts),
     }

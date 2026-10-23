@@ -7,8 +7,8 @@ import { CircleCheck, RefreshCw, ShieldAlert, TriangleAlert } from '@lucide/vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AccountUsageWindow from '@/components/account/account-usage-window/index.vue'
-import LastUsedAtCell from '@/components/LastUsedAtCell.vue'
 import { formatCompactNumber } from '@/utils/format'
+import { formatRelativeTime } from '@/utils/relative-time'
 import { metricToneIconClasses, metricToneValueClasses } from '../constants'
 import DashboardAccountIdentity from './DashboardAccountIdentity.vue'
 
@@ -266,8 +266,7 @@ const statusBars = computed(() => {
                   <span
                     class="min-w-0 truncate text-xs leading-[1.15] font-bold text-cp-text-secondary xl:whitespace-nowrap"
                   >
-                    <LastUsedAtCell v-if="account.lastUsedAt" :value="account.lastUsedAt" :full-display="null" />
-                    <template v-else>—</template>
+                    {{ formatRelativeTime(account.lastUsedRelative) }}
                   </span>
                 </span>
 

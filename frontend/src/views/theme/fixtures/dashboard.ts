@@ -354,7 +354,8 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
         resetAtDisplay: '—',
       },
       lastUsed: t('appearance.preview.components.justNow'),
-      lastUsedAt: new Date().toISOString(),
+      lastUsedAt: '2026-08-23T10:30:00+08:00',
+      lastUsedRelative: { kind: 'just_now' },
     },
     {
       id: 'preview-xai-1',
@@ -399,7 +400,8 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
         },
       },
       lastUsed: t('common.time.minutesAgo', { count: 5 }),
-      lastUsedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+      lastUsedAt: '2026-08-23T10:25:00+08:00',
+      lastUsedRelative: { kind: 'elapsed', value: 5, unit: 'minute' },
     },
     {
       id: 'preview-openai-2',
@@ -431,7 +433,8 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
         resetAtDisplay: '—',
       },
       lastUsed: t('common.time.minutesAgo', { count: 8 }),
-      lastUsedAt: new Date(Date.now() - 8 * 60_000).toISOString(),
+      lastUsedAt: '2026-08-23T10:22:00+08:00',
+      lastUsedRelative: { kind: 'elapsed', value: 8, unit: 'minute' },
     },
   ],
   usageRecords: [

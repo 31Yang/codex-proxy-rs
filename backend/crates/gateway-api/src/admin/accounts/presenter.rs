@@ -242,6 +242,9 @@ pub(super) fn account_quota_view(
     (
         AccountQuotaView {
             refreshed_at: quota.observed_at.map(|value| time.rfc3339(&value)),
+            refreshed_at_relative: quota
+                .observed_at
+                .map(|value| time.relative_view(value, now)),
             refreshed_at_display,
             limit_reached: quota.limit_reached,
             rate_limited_until,

@@ -1626,3 +1626,144 @@ async fn dashboard_summary_should_identify_metrics_without_localized_labels() {
         }
     }
 }
+
+#[tokio::test]
+async fn dashboard_relative_time_preserves_server_anchor_boundaries_and_deployment_timezone() {
+    use axum::{
+        body::{Body, to_bytes},
+        http::{Request, StatusCode, header},
+    };
+    use chrono::{DateTime, Duration};
+    use gateway_admin::model::observability::{
+        DashboardAccountUsage, DashboardObservation, TimeRange,
+    };
+    use gateway_api::admin::observability;
+    use tower::ServiceExt as _;
+
+    use crate::admin::{AdminTestFixture, AdminTestState};
+
+    let now = "2026-06-15T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
+    for (zone, future_display) in [
+        ("UTC", "2026-06-15 00:00:01"),
+        ("Asia/Shanghai", "2026-06-15 08:00:01"),
+        ("Asia/Kathmandu", "2026-06-15 05:45:01"),
+        ("America/New_York", "2026-06-14 20:00:01"),
+    ] {
+        for (elapsed_ms, expected, legacy) in [
+            (None, json!(null), "—"),
+            (
+                Some(-1_000),
+                json!({ "kind": "absolute", "value": future_display }),
+                future_display,
+            ),
+            (Some(-1), json!({ "kind": "just_now" }), "刚刚"),
+            (Some(0), json!({ "kind": "just_now" }), "刚刚"),
+            (Some(59_999), json!({ "kind": "just_now" }), "刚刚"),
+            (
+                Some(60_000),
+                json!({ "kind": "elapsed", "value": 1, "unit": "minute" }),
+                "1 分钟前",
+            ),
+            (
+                Some(119_999),
+                json!({ "kind": "elapsed", "value": 1, "unit": "minute" }),
+                "1 分钟前",
+            ),
+            (
+                Some(3_599_999),
+                json!({ "kind": "elapsed", "value": 59, "unit": "minute" }),
+                "59 分钟前",
+            ),
+            (
+                Some(3_600_000),
+                json!({ "kind": "elapsed", "value": 1, "unit": "hour" }),
+                "1 小时前",
+            ),
+            (
+                Some(86_399_999),
+                json!({ "kind": "elapsed", "value": 23, "unit": "hour" }),
+                "23 小时前",
+            ),
+            (
+                Some(86_400_000),
+                json!({ "kind": "elapsed", "value": 1, "unit": "day" }),
+                "1 天前",
+            ),
+            (
+                Some(34_560_000_000),
+                json!({ "kind": "elapsed", "value": 400, "unit": "day" }),
+                "400 天前",
+            ),
+        ] {
+            // 每个边界使用独立缓存，避免相同锚点复用上一轮观测数据
+            let fixture = AdminTestFixture::with_timezone(zone.parse().unwrap()).await;
+            fixture.auth.insert_session("valid-session");
+            let last_used_at = elapsed_ms.map(|value| now - Duration::milliseconds(value));
+            *fixture.dashboard_observation.lock().unwrap() = Some(DashboardObservation {
+                yesterday: Default::default(),
+                analytics: Default::default(),
+                runtime_slots: None,
+                range: TimeRange::new(now - Duration::hours(1), now).unwrap(),
+                totals: Default::default(),
+                provider_accounts: Default::default(),
+                trend: Vec::new(),
+                account_usage: vec![DashboardAccountUsage {
+                    account_id: "acct_relative_time".to_owned(),
+                    provider_kind: "openai".to_owned(),
+                    authentication_kind: "oauth".to_owned(),
+                    name: "Relative time fixture".to_owned(),
+                    email: None,
+                    plan_type: None,
+                    plan_type_display: None,
+                    request_count: 1,
+                    success_count: 1,
+                    input_tokens: None,
+                    output_tokens: None,
+                    cached_input_tokens: None,
+                    cache_write_input_tokens: None,
+                    reasoning_output_tokens: None,
+                    image_input_tokens: None,
+                    image_output_tokens: None,
+                    image_request_count: 0,
+                    image_request_failed_count: 0,
+                    total_tokens: None,
+                    cost_coverage: Default::default(),
+                    costs: Vec::new(),
+                    last_used_at,
+                    request_buckets: Vec::new(),
+                    quota_used_percent: None,
+                    quota_window: None,
+                    models: Vec::new(),
+                }],
+                recent_requests: Vec::new(),
+            });
+            let response = observability::router::<AdminTestState>()
+                .with_state(fixture.state())
+                .oneshot(
+                    Request::builder()
+                        .uri(format!(
+                            "/api/admin/dashboard/summary?asOf={}",
+                            now.timestamp_millis()
+                        ))
+                        .header(header::COOKIE, "cpr_session=valid-session")
+                        .header(header::ACCEPT_LANGUAGE, "en")
+                        .header("x-request-id", "req_relative_time")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            let status = response.status();
+            let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+            let value: serde_json::Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(status, StatusCode::OK, "{zone}: {value}");
+            let account = &value["data"]["accountUsage"][0];
+            assert_eq!(
+                account["lastUsedRelative"], expected,
+                "{zone}: {elapsed_ms:?}"
+            );
+            assert_eq!(account["lastUsed"], legacy, "{zone}: {elapsed_ms:?}");
+            assert_eq!(account["lastUsedAt"], json!(last_used_at));
+        }
+    }
+}

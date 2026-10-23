@@ -1,4 +1,5 @@
 import type { RequestOptions } from '../request'
+import type { RelativeTimeView } from '../time'
 import type { AccountQuotaWindow } from './accounts'
 import type { AnalyticsMetadata } from './analytics'
 import type { UsageListRecord } from './usage'
@@ -165,6 +166,7 @@ export interface DashboardAccountUsage {
   metricLabel: string
   metricValue: string
   lastUsedAt: string | null
+  lastUsedRelative: RelativeTimeView | null
   lastUsed: string
 }
 

@@ -429,6 +429,7 @@ pub struct DashboardAccountUsageView {
     pub metric_label: String,
     pub metric_value: String,
     pub last_used_at: Option<DateTime<Utc>>,
+    pub last_used_relative: Option<crate::time::RelativeTimeView>,
     pub last_used: String,
 }
 

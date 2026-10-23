@@ -158,10 +158,17 @@ Codex PAT 验证服务不可用和身份响应无效分别返回 `50301`、`5020
 `YYYY-MM-DD HH:mm:ss`，短时间、相对时间和图表标签按对应视图返回；缺失时间的展示字段为 `null` 或占位文本。
 调用者直接显示文本，使用原始时间点进行排序、比较和输入，不把展示文本转回请求时间
 
-账号、模型用量和 Key 列表以及 Dashboard 的最近使用时间由前端根据原始 RFC3339 `lastUsedAt`，
-通过 VueUse `useTimeAgoIntl` 按界面语言显示短相对时间，并随时间更新。账号额度的最近刷新时间
-同样使用 `quota.refreshedAt`，缺失时显示占位文本。悬停的完整日期仍使用后端
-`lastUsedAtFullDisplay`，不使用浏览器本地时区重算
+账号、模型用量和 Key 列表的最近使用时间由前端根据原始 RFC3339 时间点，通过 VueUse `useTimeAgoIntl` 按界面语言显示短相对时间，并随时间更新；悬停的完整日期仍使用后端 `lastUsedAtFullDisplay`，不使用浏览器本地时区重算
+
+Dashboard 的 `lastUsedRelative` 和账号额度的 `refreshedAtRelative` 由后端确定时间语义，
+分别以查询锚点和服务端当前时间计算，随接口刷新更新。前端只翻译分类与单位，不使用浏览器时钟或时区重算
+
+- 缺失时间返回 `null`，前端显示占位文本
+- `kind=just_now` 表示不足 60 秒
+- `kind=elapsed` 包含整数 `value` 和 `unit=minute|hour|day`，分钟不足 60、小时不足 24，之后始终用天；数值向下取整
+- `kind=absolute` 的 `value` 是后端按部署 `host.timezone` 生成的完整日期文本，用于按整秒判断的未来时间点
+
+原始 RFC3339 `lastUsedAt`、`quota.refreshedAt` 与兼容展示字段保持可用，不用于前端重新决定上述展示方式
 
 账号冷却返回 RFC3339 `rateLimitedUntil` 和 `rateLimitRecoveryDisplay`，后者包含剩余时长、
 到期时间或等待恢复探测的提示，随账号数据刷新；前端不解析展示文本或自行计算恢复提示
@@ -2033,7 +2040,7 @@ Dashboard 的 `capacityInfo` 统计普通容量，不含独立审批池；`maxCo
 `usedSlots` 仍表示实际在途数，Redis 不可用时为 `null`；没有可用账号时 `totalSlots` 为 `0`
 
 Dashboard 的 `accountUsage[]` 返回稳定指标 `metric=requests|tokens`、可空原始数值 `metricValueRaw` 和
-可空 RFC3339 `lastUsedAt`，前端负责指标名称、数字和相对时间的本地化。
+可空 RFC3339 `lastUsedAt`；前端负责指标名称和数字本地化，相对时间按[页面时间合同](#页面时间合同)翻译 `lastUsedRelative`。
 `requests` 使用代表性额度窗口的本地请求数，`tokens` 使用今日 Token；未知数值为 `null`，零值保留 `0`。
 `metricLabel`、`metricValue` 和 `lastUsed` 保留给兼容调用方，当前管理端不解析或显示这些字段
 

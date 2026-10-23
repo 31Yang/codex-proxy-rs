@@ -980,6 +980,9 @@ pub(crate) fn dashboard_view(
             metric_label,
             metric_value,
             last_used_at: credential.last_used_at,
+            last_used_relative: credential
+                .last_used_at
+                .map(|value| time.relative_view(value, range.end)),
             last_used: time.relative_optional(credential.last_used_at, range.end),
         });
     }

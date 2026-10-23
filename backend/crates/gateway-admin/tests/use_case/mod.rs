@@ -1044,7 +1044,7 @@ pub(super) fn dashboard_profile_provider() -> Arc<dyn ProviderAdmin> {
             },
             user_agent: "gateway-admin-test".to_owned(),
             attributes: vec![DashboardWireAttribute {
-                label: "Core".to_owned(),
+                key: "core".to_owned(),
                 value: "test".to_owned(),
             }],
             verified_at: Some(chrono::Utc::now()),

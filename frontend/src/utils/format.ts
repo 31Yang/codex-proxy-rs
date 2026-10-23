@@ -70,7 +70,7 @@ export function formatUsd(value?: string | number | null, precise = false) {
   if (parsed == null)
     return '—'
   const fractionDigits = precise || (Math.abs(parsed) > 0 && Math.abs(parsed) < 0.01) ? 4 : 2
-  return new Intl.NumberFormat(numberLocale(), {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: fractionDigits,

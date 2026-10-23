@@ -35,7 +35,7 @@ const modelUsageColumns = computed(() => (defineTableColumns<AccountModelUsage>(
 </script>
 
 <template>
-  <section class="grid gap-4 rounded-lg bg-cp-bg-container p-4 shadow-cp-tertiary xl:min-h-0 xl:grid-cols-[minmax(10rem,1fr)_minmax(0,4fr)]">
+  <section class="grid gap-4 rounded-lg bg-cp-bg-container p-4 shadow-cp-tertiary xl:min-h-0 xl:grid-cols-[0.52fr_1.48fr]">
     <div class="xl:flex xl:min-h-0 xl:flex-col">
       <div class="mb-3 flex shrink-0 items-center justify-between gap-3">
         <h3 class="m-0 text-cp-lg font-heavy text-cp-text">

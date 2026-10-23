@@ -83,7 +83,7 @@ const submitLabel = computed(() => {
       >
         {{ t('auth.title') }}
       </h1>
-      <p class="m-0 -ml-2 text-sm leading-[1.45] font-normal text-(--cp-login-description-color)">
+      <p class="m-0 text-sm leading-[1.45] font-normal text-(--cp-login-description-color) [&:lang(zh)]:-ml-2">
         {{ t('auth.welcome') }}
       </p>
     </section>

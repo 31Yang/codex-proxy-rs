@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DashboardWireProfile } from '@/api/modules/dashboard'
 import { ZCard, ZEmpty, ZSegmented } from '@codex-proxy/ui'
 
 import { Box, CheckCircle2, Monitor, RefreshCw, ShieldCheck, Terminal, TriangleAlert } from '@lucide/vue'
@@ -8,35 +9,10 @@ import { useI18n } from 'vue-i18n'
 import { formatProviderLabel, isSupportedProvider, providerIcon } from '@/utils/providers'
 
 const props = defineProps<{
-  profiles: WireProfile[]
+  profiles: DashboardWireProfile[]
 }>()
 
 const { t } = useI18n({ useScope: 'global' })
-
-interface WireProfile {
-  provider: string
-  product: string
-  version: string
-  build?: string | null
-  target: {
-    osType: string
-    osVersion: string
-    arch: string
-    terminal: string
-  }
-  userAgent: string
-  attributes: Array<{ label: string, value: string }>
-  verifiedAt?: string | null
-  verifiedAtDisplay?: string | null
-  release?: {
-    status?: 'unchecked' | 'aligned' | 'review_required' | 'check_failed'
-    checkedAt?: string | null
-    checkedAtDisplay?: string | null
-    latestVersion?: string | null
-    latestBuild?: string | null
-    error?: string | null
-  } | null
-}
 
 const activeProvider = shallowRef('')
 
@@ -75,7 +51,7 @@ const releaseStatus = computed(() => {
   const current = profile.value
   if (!current?.release) {
     return {
-      label: current?.attributes.some(item => item.label === t('dashboard.clientIdentity.versionPolicy') && item.value === t('dashboard.clientIdentity.customVersion')) ? t('dashboard.clientIdentity.customVersion') : t('dashboard.clientIdentity.active'),
+      label: current?.attributes.some(item => item.key === 'version_policy' && item.value === 'fixed') ? t('dashboard.clientIdentity.customVersion') : t('dashboard.clientIdentity.active'),
       title: t('dashboard.clientIdentity.activeDescription'),
       tone: 'bg-cp-info-container text-cp-info-on-container',
       icon: ShieldCheck,
@@ -137,9 +113,18 @@ const clientIdentity = computed(() => {
   const current = profile.value
   if (!current)
     return '—'
-  const value = current.attributes.find(attribute => attribute.label === t('dashboard.clientIdentity.clientId'))?.value ?? '—'
+  const value = current.attributes.find(attribute => attribute.key === 'client_identifier')?.value
+  if (!value)
+    return '—'
   return current.provider === 'xai' ? toPascalCase(value) : value
 })
+
+const attributeLabels = computed<Record<string, string>>(() => ({
+  client_identifier: t('dashboard.clientIdentity.clientId'),
+  token_auth: t('dashboard.clientIdentity.authProtocol'),
+  client_mode: t('dashboard.clientIdentity.clientMode'),
+  version_policy: t('dashboard.clientIdentity.versionPolicy'),
+}))
 
 const identityAttributes = computed(() => {
   const current = profile.value
@@ -147,11 +132,14 @@ const identityAttributes = computed(() => {
     return []
   return isSupportedProvider(current.provider)
     ? [{ label: t('dashboard.clientIdentity.clientId'), value: clientIdentity.value }]
-    : current.attributes
+    : current.attributes.map(attribute => ({
+        label: attributeLabels.value[attribute.key] ?? attribute.key,
+        value: attribute.value,
+      }))
 })
 
 const authProtocol = computed(() => {
-  const value = profile.value?.attributes.find(attribute => attribute.label === t('dashboard.clientIdentity.tokenAuth'))?.value
+  const value = profile.value?.attributes.find(attribute => attribute.key === 'token_auth')?.value
   if (!value)
     return '—'
   return toPascalCase(value)

@@ -875,7 +875,7 @@ pub(crate) fn wire_profile_view(
             .attributes
             .into_iter()
             .map(|attribute| DashboardWireAttributeView {
-                label: attribute.label,
+                key: attribute.key,
                 value: attribute.value,
             })
             .collect(),

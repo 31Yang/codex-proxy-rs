@@ -298,7 +298,7 @@ impl ProviderAdmin for OpenAiAdminProvider {
             },
             user_agent,
             attributes: vec![DashboardWireAttribute {
-                label: "客户端标识".to_owned(),
+                key: "client_identifier".to_owned(),
                 value: client_identity,
             }],
             verified_at: Some(profile.verified_at),
@@ -366,7 +366,7 @@ impl ProviderAdmin for OpenAiAdminProvider {
             },
             attributes: vec![
                 DashboardWireAttribute {
-                    label: "客户端标识".to_owned(),
+                    key: "client_identifier".to_owned(),
                     value: if profile.client_kind == ClientKind::Desktop {
                         format!("{}; {}", profile.originator, profile.desktop_version)
                     } else {
@@ -374,13 +374,8 @@ impl ProviderAdmin for OpenAiAdminProvider {
                     },
                 },
                 DashboardWireAttribute {
-                    label: "版本策略".to_owned(),
-                    value: if custom {
-                        "固定身份"
-                    } else {
-                        "自动最新"
-                    }
-                    .to_owned(),
+                    key: "version_policy".to_owned(),
+                    value: if custom { "fixed" } else { "latest" }.to_owned(),
                 },
             ],
             verified_at: (!custom && profile.verified_at != chrono::DateTime::UNIX_EPOCH)

@@ -1,6 +1,7 @@
 {
   "accounts": {
     "quota": {
+      "general": "通用额度",
       "usageInThisWindow": "窗口消耗：{localUsageDisplay}",
       "quotaUsed": "额度已使用：{rate}",
       "resets": "重置时间: {resetAtDisplay}",
@@ -48,9 +49,11 @@
         "weekly": "周额度",
         "monthly": "月额度",
         "annual": "年额度",
-        "usage": "用量上限",
-        "secondary": "次级用量上限",
-        "duration": "{duration}额度"
+        "primary": "主额度",
+        "secondary": "次级额度",
+        "days": "{duration}日额度",
+        "hours": "{duration}小时额度",
+        "minutes": "{duration}分钟额度"
       }
     },
     "account": "账号",

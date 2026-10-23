@@ -286,8 +286,8 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
       },
       userAgent: 'codex_cli_rs/0.163.0-alpha.10.2 (Mac OS 27.0.1; arm64) Codex Desktop; 26.1013.40934',
       attributes: [
-        { label: t('appearance.preview.dashboard.clientId'), value: 'Codex Desktop; 26.1013.40934' },
-        { label: t('appearance.preview.dashboard.tokenAuthentication'), value: 'bearer' },
+        { key: 'client_identifier', value: 'Codex Desktop; 26.1013.40934' },
+        { key: 'token_auth', value: 'bearer' },
       ],
       verifiedAt: '2026-10-17T20:15:28+08:00',
       verifiedAtDisplay: '2026-10-17 20:15:28',
@@ -310,8 +310,8 @@ export const themeDashboardSummary = computed<DashboardSummaryResponse>(() => ({
       },
       userAgent: 'grok_cli/0.7.3',
       attributes: [
-        { label: t('appearance.preview.dashboard.clientId'), value: 'grok_cli' },
-        { label: t('appearance.preview.dashboard.tokenAuthentication'), value: 'bearer' },
+        { key: 'client_identifier', value: 'grok_cli' },
+        { key: 'token_auth', value: 'bearer' },
       ],
       verifiedAt: '2026-08-23T10:25:00+08:00',
       verifiedAtDisplay: '2026-08-23 10:25:00',

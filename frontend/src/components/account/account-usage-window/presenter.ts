@@ -257,18 +257,29 @@ export function quotaWindowLabel(window: AccountQuotaWindow, includeLimitName = 
         seconds >= period.seconds * 0.95 && seconds <= period.seconds * 1.05,
       )
   let label: string
-  if (period)
+  if (period) {
     label = period.label()
-  else if (seconds !== null && seconds > 0)
-    label = t('accounts.quota.windows.duration', { duration: rollingWindowDurationDisplay(seconds) })
-  else if (window.role === 'monthly')
+  }
+  else if (seconds !== null && seconds > 0) {
+    if (seconds % 86_400 === 0)
+      label = t('accounts.quota.windows.days', { duration: formatInteger(seconds / 86_400) })
+    else if (seconds % 3_600 === 0)
+      label = t('accounts.quota.windows.hours', { duration: formatInteger(seconds / 3_600) })
+    else
+      label = t('accounts.quota.windows.minutes', { duration: formatInteger(Math.ceil(seconds / 60)) })
+  }
+  else if (window.role === 'monthly') {
     label = t('accounts.quota.windows.monthly')
-  else if (window.role === 'primary')
-    label = t('accounts.quota.windows.usage')
-  else if (window.role === 'secondary')
+  }
+  else if (window.role === 'primary') {
+    label = t('accounts.quota.windows.primary')
+  }
+  else if (window.role === 'secondary') {
     label = t('accounts.quota.windows.secondary')
-  else
+  }
+  else {
     label = window.windowLabelDisplay
+  }
 
   return includeLimitName && window.limitName && window.limitId !== 'codex'
     ? `${window.limitName} · ${label}`

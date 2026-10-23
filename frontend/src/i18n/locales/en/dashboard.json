@@ -78,8 +78,9 @@
       "empty": "No successful requests"
     },
     "clientIdentity": {
-      "notChecked": "Not checked yet",
+      "clientMode": "Client mode",
       "versionPolicy": "Version policy",
+      "notChecked": "Not checked yet",
       "customVersion": "Custom version",
       "active": "Active",
       "activeDescription": "New requests using the global settings use this identity",
@@ -94,7 +95,6 @@
       "verifiedAt": "Profile verified: {verifiedAt}",
       "checkedAt": "Release checked: {checkedAt}",
       "clientId": "Client ID",
-      "tokenAuth": "Token authentication",
       "title": "Default upstream identity",
       "provider": "Upstream platform",
       "empty": "No request identity available",

@@ -1190,10 +1190,10 @@ pub struct DashboardWireProfile {
     pub release: Option<DashboardDesktopRelease>,
 }
 
-/// Provider 画像的差异字段；展示层只显示标签和值，不解释 Provider 语义
+/// Provider 画像的差异字段，以稳定标识传递语义，名称由前端本地化
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DashboardWireAttribute {
-    pub label: String,
+    pub key: String,
     pub value: String,
 }
 

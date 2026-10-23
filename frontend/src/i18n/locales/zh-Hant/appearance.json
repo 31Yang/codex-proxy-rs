@@ -114,8 +114,6 @@
         "demoKey": "演示 Key",
         "requestHealthTimeline": "請求健康時間線",
         "validRequestAvailability": "有效請求可用性",
-        "clientId": "客戶端 ID",
-        "tokenAuthentication": "Token 認證",
         "todaySToken": "今日 Token",
         "hours": "5 小時",
         "requests": "08-23 {value}:00–{value2}:00 · {count} 次請求",

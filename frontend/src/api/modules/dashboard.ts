@@ -129,7 +129,7 @@ export interface DashboardWireProfile {
     terminal: string
   }
   userAgent: string
-  attributes: Array<{ label: string, value: string }>
+  attributes: Array<{ key: string, value: string }>
   verifiedAt?: string
   verifiedAtDisplay?: string
   release?: {

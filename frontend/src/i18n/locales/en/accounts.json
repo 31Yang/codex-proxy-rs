@@ -1,6 +1,7 @@
 {
   "accounts": {
     "quota": {
+      "general": "General quota",
       "usageInThisWindow": "Usage in this window: {localUsageDisplay}",
       "quotaUsed": "Quota used: {rate}",
       "resets": "Resets: {resetAtDisplay}",
@@ -48,9 +49,11 @@
         "weekly": "Weekly limit",
         "monthly": "Monthly limit",
         "annual": "Annual limit",
-        "usage": "Usage limit",
-        "secondary": "Secondary usage limit",
-        "duration": "{duration} limit"
+        "primary": "Primary limit",
+        "secondary": "Secondary limit",
+        "days": "{duration}-day limit",
+        "hours": "{duration}-hour limit",
+        "minutes": "{duration}-minute limit"
       }
     },
     "account": "Account",

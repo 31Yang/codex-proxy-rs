@@ -1,15 +1,14 @@
 import { t } from '@/i18n'
-import { numberLocale } from '@/utils/format'
 
-export function money(value: string | number | null, currency = 'USD') {
+export function money(value: string | number | null) {
   if (value === null)
     return t('usage.metrics.notPriced')
   const amount = Number(value)
   if (!Number.isFinite(amount))
     return '—'
-  return new Intl.NumberFormat(numberLocale(), {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency,
+    currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 6,
   }).format(amount)

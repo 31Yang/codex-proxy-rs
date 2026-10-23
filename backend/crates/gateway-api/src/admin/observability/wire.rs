@@ -530,7 +530,7 @@ pub struct DashboardWireProfileView {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DashboardWireAttributeView {
-    pub label: String,
+    pub key: String,
     pub value: String,
 }
 

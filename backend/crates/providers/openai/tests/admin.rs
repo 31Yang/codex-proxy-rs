@@ -472,9 +472,17 @@ async fn openai_admin_provider_exposes_live_wire_profile_and_validated_billing()
         profile
             .attributes
             .iter()
-            .find(|attribute| attribute.label == "客户端标识")
+            .find(|attribute| attribute.key == "client_identifier")
             .map(|attribute| attribute.value.as_str()),
         Some("Codex Desktop; 1.2026.190")
+    );
+    assert_eq!(
+        profile
+            .attributes
+            .iter()
+            .find(|attribute| attribute.key == "version_policy")
+            .map(|attribute| attribute.value.as_str()),
+        Some("fixed")
     );
     assert!(profile.release.is_none());
     let billing = admin

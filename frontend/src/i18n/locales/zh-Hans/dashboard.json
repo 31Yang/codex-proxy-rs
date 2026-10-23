@@ -78,8 +78,9 @@
       "empty": "暂无成功记录"
     },
     "clientIdentity": {
-      "notChecked": "尚未检查",
+      "clientMode": "运行模式",
       "versionPolicy": "版本策略",
+      "notChecked": "尚未检查",
       "customVersion": "固定自定义",
       "active": "当前生效",
       "activeDescription": "跟随通用设置的新请求使用此身份",
@@ -94,7 +95,6 @@
       "verifiedAt": "画像核验 {verifiedAt}",
       "checkedAt": "发布检查 {checkedAt}",
       "clientId": "客户端 ID",
-      "tokenAuth": "Token 认证",
       "title": "通用上游身份",
       "provider": "上游平台",
       "empty": "暂无请求身份",

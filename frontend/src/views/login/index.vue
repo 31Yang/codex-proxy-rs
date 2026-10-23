@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ZSelect } from '@codex-proxy/ui'
-
 import { computed, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
-import { useLocale } from '@/composables/useLocale'
+import AppLanguageMenu from '@/components/AppLanguageMenu.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 
 import LoginBackground from './components/LoginBackground.vue'
@@ -19,7 +17,6 @@ type LoginRealm = 'admin' | 'key'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const { locale, localeOptions, setLocale } = useLocale()
 
 const realm = shallowRef<LoginRealm>(normalizeRealm(window.history.state?.loginMode))
 const username = shallowRef('')
@@ -81,13 +78,7 @@ function resolveDestination(): string {
     <LoginBackground />
 
     <div class="absolute top-5 right-5 z-20 flex items-center gap-2 max-[560px]:top-4 max-[560px]:right-4">
-      <ZSelect
-        :model-value="locale"
-        :options="localeOptions"
-        :aria-label="t('common.language')"
-        class="w-36"
-        @update:model-value="setLocale"
-      />
+      <AppLanguageMenu size="default" class="[&>button:hover]:bg-cp-bg-text-hover" />
       <LoginThemeToggle />
     </div>
 

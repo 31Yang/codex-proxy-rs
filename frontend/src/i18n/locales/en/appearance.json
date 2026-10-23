@@ -114,8 +114,6 @@
         "demoKey": "Demo Key",
         "requestHealthTimeline": "Request a health timeline",
         "validRequestAvailability": "Valid request availability",
-        "clientId": "Client ID",
-        "tokenAuthentication": "Token authentication",
         "todaySToken": "Today's tokens",
         "hours": "5 hours",
         "requests": "08-23 {value}:00–{value2}:00 · Requests: {count}",

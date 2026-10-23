@@ -2009,6 +2009,17 @@ errorCode, errorMessage, startedAt, completedAt, expiresAt, createdAt, updatedAt
 
 图表颜色、系列身份和选中状态使用 `metric`，不根据译文或数组位置推断指标
 
+### Dashboard 客户端身份
+
+`wireProfiles[].attributes[]` 返回稳定的 `key` 和 `value`，字段名称由前端本地化
+
+- `client_identifier`：上游客户端标识
+- `client_mode`：客户端运行模式
+- `token_auth`：认证协议
+- `version_policy`：版本选择策略，值为 `fixed` 或 `latest`
+
+页面按 `key` 取值；状态判断使用原始值，不依赖界面译文
+
 ### Dashboard 容量与账号用量
 
 Dashboard 的 `capacityInfo` 统计普通容量，不含独立审批池；`maxConcurrentPerAccount` 为默认账号并发上限，`0` 表示不限制。

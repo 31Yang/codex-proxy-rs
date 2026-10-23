@@ -686,20 +686,10 @@ pub(crate) fn trend_point_view(
         tokens_value: point.metrics.total_tokens,
         errors: format_compact_number(point.service_failure_count),
         errors_value: point.service_failure_count,
-        latency: display_duration(point.average_latency_ms),
         latency_value: point.average_latency_ms,
-        max_latency: display_duration(point.metrics.max_latency_ms),
-        max_latency_value: point.metrics.max_latency_ms,
-        min_latency: display_duration(point.metrics.min_latency_ms),
-        min_latency_value: point.metrics.min_latency_ms,
         success_rate: success_rate_value
             .map_or_else(|| "—".to_owned(), |value| format!("{value:.1}%")),
         success_rate_value,
-        first_token_p50_ms: point
-            .metrics
-            .first_token_latency_percentiles
-            .p50_ms
-            .map(|value| value.as_f64()),
         first_token_p95_ms: point
             .metrics
             .first_token_latency_percentiles
@@ -711,20 +701,6 @@ pub(crate) fn trend_point_view(
             .p95_ms
             .map(|value| value.as_f64()),
         output_throughput_p50: point.metrics.output_throughput_p50,
-        admission_decision_p95_ms: point
-            .metrics
-            .admission_decision_percentiles
-            .p95_ms
-            .map(|value| value.as_f64()),
-        account_selection_wait_p95_ms: point
-            .metrics
-            .account_selection_wait_percentiles
-            .p95_ms
-            .map(|value| value.as_f64()),
-        capacity_utilization: point
-            .metrics
-            .capacity_utilization_p95_basis_points
-            .map(basis_points_rate),
     }
 }
 

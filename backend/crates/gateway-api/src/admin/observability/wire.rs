@@ -306,21 +306,12 @@ pub struct TrendPointView {
     pub tokens_value: u64,
     pub errors: String,
     pub errors_value: u64,
-    pub latency: String,
     pub latency_value: Option<u64>,
-    pub max_latency: String,
-    pub max_latency_value: Option<u64>,
-    pub min_latency: String,
-    pub min_latency_value: Option<u64>,
     pub success_rate: String,
     pub success_rate_value: Option<f64>,
-    pub first_token_p50_ms: Option<f64>,
     pub first_token_p95_ms: Option<f64>,
     pub latency_p95_ms: Option<f64>,
     pub output_throughput_p50: Option<u64>,
-    pub admission_decision_p95_ms: Option<f64>,
-    pub account_selection_wait_p95_ms: Option<f64>,
-    pub capacity_utilization: Option<f64>,
 }
 
 /// 趋势指标的稳定身份，展示名称由管理端本地化

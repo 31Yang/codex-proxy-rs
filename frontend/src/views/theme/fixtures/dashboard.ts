@@ -81,21 +81,12 @@ function previewTrendPoint(requestsValue: number, index: number): DashboardTrend
     tokensValue: inputTokensValue + outputTokensValue,
     errors: errorsValue.toLocaleString('zh-CN'),
     errorsValue,
-    latency: `${410 + index * 7} ms`,
     latencyValue: 410 + index * 7,
-    maxLatency: `${760 + index * 12} ms`,
-    maxLatencyValue: 760 + index * 12,
-    minLatency: `${180 + index * 3} ms`,
-    minLatencyValue: 180 + index * 3,
     successRate: `${successRateValue.toFixed(1)}%`,
     successRateValue,
-    firstTokenP50Ms: 210 + index * 3,
     firstTokenP95Ms: 420 + index * 5,
     latencyP95Ms: 760 + index * 12,
     outputThroughputP50: 52 + (index % 5),
-    admissionDecisionP95Ms: 2 + (index % 3),
-    accountSelectionWaitP95Ms: 8 + (index % 4),
-    capacityUtilization: 0.42 + (index % 6) * 0.04,
   }
 }
 

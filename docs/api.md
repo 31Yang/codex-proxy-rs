@@ -2022,6 +2022,10 @@ errorCode, errorMessage, startedAt, completedAt, expiresAt, createdAt, updatedAt
 
 图表颜色、系列身份和选中状态使用 `metric`，不根据译文或数组位置推断指标
 
+`points[]` 提供趋势图与首页卡片使用的请求数、Tokens、缓存比例、错误数、成功率、
+`latencyValue`、首 Token P95、总延迟 P95 和输出吞吐 P50，以及时间标签与展示值
+内部调度分位数和容量分布通过用量洞察查询
+
 ### Dashboard 客户端身份
 
 `wireProfiles[].attributes[]` 返回稳定的 `key` 和 `value`，字段名称由前端本地化

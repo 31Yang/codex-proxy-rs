@@ -30,7 +30,7 @@
     },
     "activeAccounts": {
       "title": "Active account usage",
-      "sortByRecent": "Sort by recent use",
+      "sortByRecent": "Sorted by last used",
       "empty": "No recent account requests",
       "recent": "Recently"
     },
@@ -65,7 +65,7 @@
     },
     "comparedWithYesterday": "vs. yesterday",
     "trends": {
-      "title": "Usage trends",
+      "title": "Trends",
       "metric": "Trend indicator",
       "highlight": "Highlight the {label} series",
       "empty": "No trend data",

@@ -132,7 +132,7 @@ function metricCards(
   const hasTodayRequests = traffic.todayRequestsValue > 0
   return [
     {
-      title: t('accounts.account'),
+      title: t('accounts.fields.count'),
       value: credentials.total,
       valueRaw: credentials.totalValue,
       valueFormatter: formatAccountCount,

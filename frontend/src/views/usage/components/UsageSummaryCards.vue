@@ -69,7 +69,7 @@ const items = computed(() => [
         <span class="block text-cp-sm leading-none font-heavy text-cp-text-secondary">
           {{ item.label }}
         </span>
-        <strong class="my-2 block truncate font-mono text-[26px] leading-none font-extrabold text-cp-text">
+        <strong class="my-2 block truncate font-mono text-[24px] leading-none font-extrabold text-cp-text">
           {{ item.value }}
         </strong>
         <span class="block truncate text-cp-sm leading-none font-emphasis text-cp-text-quaternary">
